@@ -1,0 +1,170 @@
+import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'home_screen.dart';
+import 'market_screen.dart';
+
+class MainShell extends StatefulWidget {
+  const MainShell({super.key});
+
+  @override
+  State<MainShell> createState() => _MainShellState();
+}
+
+class _MainShellState extends State<MainShell> {
+  int _currentIndex = 0;
+
+  static const List<_NavItem> _navItems = [
+    _NavItem(icon: Icons.home_rounded, label: 'Home'),
+    _NavItem(icon: Icons.show_chart_rounded, label: 'Market'),
+    _NavItem(icon: Icons.show_chart_rounded, label: 'Trade', isCenter: true),
+    _NavItem(icon: Icons.account_balance_wallet_rounded, label: 'Assets'),
+    _NavItem(icon: Icons.menu_rounded, label: 'Menu'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final List<Widget> pages = [
+      const CryptoDashboard(),
+      const MarketScreen(),
+      _placeholderPage('Trade'),
+      _placeholderPage('Assets'),
+      _placeholderPage('Menu'),
+    ];
+    return Scaffold(
+      backgroundColor: const Color(0xFF151515),
+      body: IndexedStack(
+        index: _currentIndex.clamp(0, pages.length - 1),
+        children: pages,
+      ),
+      bottomNavigationBar: _buildBottomNav(),
+    );
+  }
+
+  Widget _placeholderPage(String title) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF151515),
+      body: Center(
+        child: Text(
+          title,
+          style: GoogleFonts.outfit(
+            fontSize: 20,
+            color: Colors.white54,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBottomNav() {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF1A1A1A),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.3),
+            blurRadius: 12,
+            offset: const Offset(0, -4),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: List.generate(_navItems.length, (index) {
+              final item = _navItems[index];
+              final isSelected = _currentIndex == index;
+              if (item.isCenter) {
+                return _buildCenterButton();
+              }
+              return _buildNavItem(
+                icon: item.icon,
+                label: item.label,
+                selected: isSelected,
+                onTap: () => setState(() => _currentIndex = index),
+              );
+            }),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNavItem({
+    required IconData icon,
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 26,
+            color: selected ? const Color(0xFFE4B53E) : Colors.white38,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: GoogleFonts.outfit(
+              fontSize: 11,
+              fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+              color: selected ? const Color(0xFFE4B53E) : Colors.white38,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCenterButton() {
+    return GestureDetector(
+      onTap: () => setState(() => _currentIndex = 2),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 52,
+            height: 52,
+            decoration: const BoxDecoration(
+              color: Color(0xFFE4B53E),
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: Color(0xFFE4B53E),
+                  blurRadius: 12,
+                  spreadRadius: 0,
+                ),
+              ],
+            ),
+            child: const Icon(
+              Icons.show_chart_rounded,
+              color: Colors.black,
+              size: 28,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Trade',
+            style: GoogleFonts.outfit(
+              fontSize: 11,
+              color: Colors.white38,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _NavItem {
+  final IconData icon;
+  final String label;
+  final bool isCenter;
+  const _NavItem({required this.icon, required this.label, this.isCenter = false});
+}
