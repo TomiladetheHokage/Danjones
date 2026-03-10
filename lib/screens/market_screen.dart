@@ -94,17 +94,24 @@ class MarketScreen extends StatelessWidget {
   Widget _buildTopMoversRow() {
     return SizedBox(
       height: 200,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        itemCount: MockCrypto.topMovers.length,
-        itemBuilder: (context, index) {
-          return Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: CryptoCard(asset: MockCrypto.topMovers[index], onTap: () {}),
-          );
-        },
+      child: Center(
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          physics: const BouncingScrollPhysics(),
+          child: Row(
+            children: [
+              const SizedBox(width: 8),
+              for (int index = 0; index < MockCrypto.topMovers.length; index++) ...[
+                CryptoCard(
+                  asset: MockCrypto.topMovers[index],
+                  onTap: () {},
+                  imagePath: _getImagePath(MockCrypto.topMovers[index].symbol),
+                ),
+                if (index < MockCrypto.topMovers.length - 1) const SizedBox(width: 1),
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -112,18 +119,40 @@ class MarketScreen extends StatelessWidget {
   Widget _buildNewRow() {
     return SizedBox(
       height: 200,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        itemCount: MockCrypto.newList.length,
-        itemBuilder: (context, index) {
-          return Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: CryptoCard(asset: MockCrypto.newList[index], onTap: () {}),
-          );
-        },
+      child: Center(
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          physics: const BouncingScrollPhysics(),
+          child: Row(
+            children: [
+              const SizedBox(width: 8),
+              for (int index = 0; index < MockCrypto.newList.length; index++) ...[
+                CryptoCard(
+                  asset: MockCrypto.newList[index],
+                  onTap: () {},
+                  imagePath: _getImagePath(MockCrypto.newList[index].symbol),
+                ),
+                if (index < MockCrypto.newList.length - 1) const SizedBox(width: 1),
+              ],
+            ],
+          ),
+        ),
       ),
     );
+  }
+
+  String _getImagePath(String symbol) {
+    switch (symbol) {
+      case 'BTC':
+        return 'assets/icons/BTC.png';
+      case 'ETH':
+        return 'assets/icons/ETH.png';
+      case 'SOL':
+        return 'assets/icons/SOL.png';
+      case 'FTT':
+        return 'assets/icons/FTT.png';
+      default:
+        return 'assets/icons/BTC.png';
+    }
   }
 }

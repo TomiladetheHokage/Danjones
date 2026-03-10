@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../models/crypto_asset.dart';
 import 'sparkline_chart.dart';
 import '../theme/app_theme.dart';
@@ -7,114 +8,110 @@ import '../theme/app_theme.dart';
 class CryptoCard extends StatelessWidget {
   final CryptoAsset asset;
   final VoidCallback? onTap;
+  final String? imagePath;
 
-  const CryptoCard({super.key, required this.asset, this.onTap});
+  const CryptoCard({super.key, required this.asset, this.onTap, this.imagePath});
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 160,
-        margin: const EdgeInsets.only(right: 15),
+        width: 180,
+        margin: const EdgeInsets.only(right: 14),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: const Color(0xFF1A1A1A),
-          borderRadius: BorderRadius.circular(20),
+          color: const Color(0xFF111111),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: Colors.white.withOpacity(0.08)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // TOP ROW: Image + Symbol/Name + Change Pill
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                CircleAvatar(
-                  radius: 14,
-                  backgroundColor: _getAvatarColor(asset.symbol),
-                  child: Text(
-                    asset.symbol.substring(0, 1),
-                    style: TextStyle(
-                      color: _getAvatarTextColor(asset.symbol),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 10,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
+                imagePath != null
+                    ? Image.asset(
+                        imagePath!,
+                        width: 44,
+                        height: 44,
+                        errorBuilder: (c, e, s) => const Icon(Icons.circle, color: Colors.white10, size: 44),
+                      )
+                    : const Icon(Icons.circle, color: Colors.white10, size: 44),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        asset.symbol,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                        ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            asset.symbol,
+                            style: AppTheme.inter(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: (asset.isPositive ? const Color(0xFF45E555) : const Color(0xFFEF4444))
+                                  .withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              asset.changeText,
+                              style: AppTheme.inter(
+                                color: asset.isPositive ? const Color(0xFF52D377) : Colors.redAccent,
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                       Text(
                         asset.name,
-                        style: const TextStyle(
-                          color: Colors.white54,
+                        style: AppTheme.inter(
+                          color: Colors.white38,
                           fontSize: 11,
                         ),
                       ),
                     ],
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: (asset.isPositive ? const Color(0xFF22C55E) : const Color(0xFFEF4444))
-                        .withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    asset.changeText,
-                    style: TextStyle(
-                      color: asset.isPositive ? const Color(0xFF34D399) : Colors.redAccent,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
               ],
             ),
             const Spacer(),
-            SparklineChart(
-              data: asset.sparklineData,
-              isPositive: asset.isPositive,
-              width: 128,
-              height: 40,
+            // MIDDLE: Sparkline
+            SizedBox(
+              height: 35,
+              width: double.infinity,
+              child: SparklineChart(
+                data: asset.sparklineData,
+                isPositive: asset.isPositive,
+              ),
             ),
             const Spacer(),
-            Text(
-              asset.formattedPrice,
-              style: AppTheme.inter(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
+            // BOTTOM: Price
+            Align(
+              alignment: Alignment.bottomRight,
+              child: Text(
+                asset.formattedPrice,
+                style: AppTheme.inter(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ],
         ),
       ),
     );
-  }
-
-  Color _getAvatarColor(String symbol) {
-    if (symbol == 'BTC') return Colors.orange.withOpacity(0.3);
-    if (symbol == 'ETH') return Colors.purple.withOpacity(0.3);
-    if (symbol == 'SOL') return Colors.cyan.withOpacity(0.3);
-    if (symbol == 'FTT') return Colors.pink.withOpacity(0.3);
-    return Colors.blue.withOpacity(0.3);
-  }
-
-  Color _getAvatarTextColor(String symbol) {
-    if (symbol == 'BTC') return Colors.orange;
-    if (symbol == 'ETH') return Colors.purple;
-    if (symbol == 'SOL') return Colors.cyan;
-    if (symbol == 'FTT') return Colors.pink;
-    return Colors.blue;
   }
 }

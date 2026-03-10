@@ -46,11 +46,18 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     alignment: Alignment.topRight,
                     child: TextButton(
                       onPressed: () {
-                        Navigator.of(context).pushReplacement(
-                          MaterialPageRoute(
-                            builder: (context) => const MainShell(),
-                          ),
-                        );
+                        try {
+                          Navigator.of(context).pushReplacement(
+                            MaterialPageRoute(
+                              builder: (context) => const MainShell(),
+                            ),
+                          );
+                        } catch (e) {
+                          print('Navigation error: $e');
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Error: $e')),
+                          );
+                        }
                       },
                       child: Text(
                         'Skip',
