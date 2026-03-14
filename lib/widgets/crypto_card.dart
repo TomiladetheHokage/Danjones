@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../models/crypto_asset.dart';
 import 'sparkline_chart.dart';
 import '../theme/app_theme.dart';
@@ -32,14 +32,14 @@ class CryptoCard extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                imagePath != null
-                    ? Image.asset(
-                        imagePath!,
+                imagePath != null && imagePath!.isNotEmpty
+                    ? _buildCryptoImage(imagePath!)
+                    : Container(
                         width: 44,
                         height: 44,
-                        errorBuilder: (c, e, s) => const Icon(Icons.circle, color: Colors.white10, size: 44),
-                      )
-                    : const Icon(Icons.circle, color: Colors.white10, size: 44),
+                        color: Colors.red,
+                        child: const Center(child: Text('NO IMG', style: TextStyle(color: Colors.white, fontSize: 8))),
+                      ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Column(
@@ -113,5 +113,24 @@ class CryptoCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Widget _buildCryptoImage(String imagePath) {
+    if (imagePath.endsWith('.svg')) {
+      // Try SVG first
+      return SvgPicture.asset(
+        imagePath,
+        width: 44,
+        height: 44,
+      );
+    } else {
+      // Use PNG
+      return Image.asset(
+        imagePath,
+        width: 44,
+        height: 44,
+        fit: BoxFit.contain,
+      );
+    }
   }
 }

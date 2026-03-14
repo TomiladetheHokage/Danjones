@@ -3,6 +3,7 @@ import '../models/crypto_asset.dart';
 import '../widgets/crypto_card.dart';
 import '../widgets/token_list_item.dart';
 import '../theme/app_theme.dart';
+import 'market_asset_screen.dart';
 
 class MarketScreen extends StatelessWidget {
   const MarketScreen({super.key});
@@ -17,15 +18,25 @@ class MarketScreen extends StatelessWidget {
           slivers: [
             SliverToBoxAdapter(child: _buildMarketHeader()),
             SliverToBoxAdapter(child: _buildSectionHeader('Top Movers', onViewAll: () {})),
-            SliverToBoxAdapter(child: _buildTopMoversRow()),
+            SliverToBoxAdapter(child: _buildTopMoversRow(context)),
             SliverToBoxAdapter(child: _buildSectionHeader('New', onViewAll: () {})),
-            SliverToBoxAdapter(child: _buildNewRow()),
+            SliverToBoxAdapter(child: _buildNewRow(context)),
+            
             SliverToBoxAdapter(child: _buildSectionHeader('Top Assets', onViewAll: () {})),
             SliverList(
               delegate: SliverChildBuilderDelegate(
                 (context, index) => TokenListItem(
                   asset: MockCrypto.topAssets[index],
-                  onTap: () {},
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => MarketAssetScreen(
+                          asset: MockCrypto.topAssets[index],
+                        ),
+                      ),
+                    );
+                  },
                 ),
                 childCount: MockCrypto.topAssets.length,
               ),
@@ -38,15 +49,17 @@ class MarketScreen extends StatelessWidget {
   }
 
   /// Market Header with proper spacing
-  Widget _buildMarketHeader() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+ Widget _buildMarketHeader() {
+  return Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+    child: Center(
       child: Text(
         'Market',
         style: AppTheme.heading2,
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildSectionHeader(String title, {required VoidCallback onViewAll}) {
     return Padding(
@@ -54,17 +67,21 @@ class MarketScreen extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            title,
-            style: AppTheme.heading3,
-          ),
+         Text(
+  title,
+  style: AppTheme.inter(
+    fontSize: 14,
+    fontWeight: FontWeight.w600,
+    color: Colors.white,
+  ),
+),
           GestureDetector(
             onTap: onViewAll,
             child: Text(
               'View all',
               style: AppTheme.inter(
                 fontSize: 14,
-                color: const Color(0xFFE4B53E),
+                color: Colors.white,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -91,7 +108,7 @@ class MarketScreen extends StatelessWidget {
   //   );
   // }
 
-  Widget _buildTopMoversRow() {
+  Widget _buildTopMoversRow(BuildContext context) {
     return SizedBox(
       height: 200,
       child: Center(
@@ -104,7 +121,16 @@ class MarketScreen extends StatelessWidget {
               for (int index = 0; index < MockCrypto.topMovers.length; index++) ...[
                 CryptoCard(
                   asset: MockCrypto.topMovers[index],
-                  onTap: () {},
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => MarketAssetScreen(
+                          asset: MockCrypto.topMovers[index],
+                        ),
+                      ),
+                    );
+                  },
                   imagePath: _getImagePath(MockCrypto.topMovers[index].symbol),
                 ),
                 if (index < MockCrypto.topMovers.length - 1) const SizedBox(width: 1),
@@ -116,7 +142,7 @@ class MarketScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildNewRow() {
+  Widget _buildNewRow(BuildContext context) {
     return SizedBox(
       height: 200,
       child: Center(
@@ -129,7 +155,16 @@ class MarketScreen extends StatelessWidget {
               for (int index = 0; index < MockCrypto.newList.length; index++) ...[
                 CryptoCard(
                   asset: MockCrypto.newList[index],
-                  onTap: () {},
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => MarketAssetScreen(
+                          asset: MockCrypto.newList[index],
+                        ),
+                      ),
+                    );
+                  },
                   imagePath: _getImagePath(MockCrypto.newList[index].symbol),
                 ),
                 if (index < MockCrypto.newList.length - 1) const SizedBox(width: 1),
@@ -147,10 +182,14 @@ class MarketScreen extends StatelessWidget {
         return 'assets/icons/BTC.png';
       case 'ETH':
         return 'assets/icons/ETH.png';
-      case 'SOL':
-        return 'assets/icons/SOL.png';
       case 'FTT':
         return 'assets/icons/FTT.png';
+      case 'MATIC':
+        return 'assets/icons/MATIC.png';
+      case 'XRP':
+        return 'assets/icons/XRP.png';
+      case 'UNI':
+        return 'assets/icons/UNI.png';
       default:
         return 'assets/icons/BTC.png';
     }

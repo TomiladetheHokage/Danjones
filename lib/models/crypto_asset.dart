@@ -1,3 +1,5 @@
+import 'dart:math';
+
 /// Model for a crypto asset (token) with price and chart data.
 class CryptoAsset {
   final String symbol;
@@ -35,8 +37,19 @@ class MockCrypto {
   static const equityChangeNgn = 25000.0;
   static const equityChangePercent = 2.4;
 
-  static const List<double> _upTrend = [0.2, 0.5, 0.3, 0.7, 0.4, 0.9, 0.6, 1.0];
-  static const List<double> _downTrend = [1.0, 0.7, 0.8, 0.5, 0.6, 0.3, 0.4, 0.2];
+  // Generate realistic 20-point trend data with random values (like home screen)
+  static List<double> _generateUpTrend() {
+    final random = Random();
+    return List.generate(20, (i) => 50.0 + random.nextDouble() * 50);
+  }
+
+  static List<double> _generateDownTrend() {
+    final random = Random();
+    return List.generate(20, (i) => 40.0 + random.nextDouble() * 60);
+  }
+
+  static final List<double> _upTrend = _generateUpTrend();
+  static final List<double> _downTrend = _generateDownTrend();
 
   static List<CryptoAsset> get topMovers => [
         CryptoAsset(
@@ -53,6 +66,9 @@ class MockCrypto {
           priceChangePercent: 4.5,
           sparklineData: _upTrend,
         ),
+        CryptoAsset(symbol: 'MATIC', name: 'Polygon', price: 0.85, priceChangePercent: 2.1, sparklineData: _upTrend),
+        CryptoAsset(symbol: 'XRP', name: 'Ripple', price: 0.52, priceChangePercent: -1.2, sparklineData: _downTrend),
+        CryptoAsset(symbol: 'UNI', name: 'Uniswap', price: 6.2, priceChangePercent: 0.5, sparklineData: _upTrend),
       ];
 
   static List<CryptoAsset> get topLosers => [
@@ -102,7 +118,7 @@ class MockCrypto {
         CryptoAsset(symbol: 'BNB', name: 'Binance', price: 580.2, priceChangePercent: -0.3, sparklineData: _downTrend),
         CryptoAsset(symbol: 'MATIC', name: 'Polygon', price: 0.85, priceChangePercent: 2.1, sparklineData: _upTrend),
         CryptoAsset(symbol: 'XRP', name: 'Ripple', price: 0.52, priceChangePercent: -1.2, sparklineData: _downTrend),
-        CryptoAsset(symbol: 'USDT', name: 'Tether', price: 1.0, priceChangePercent: 0.0, sparklineData: List.filled(8, 0.5)),
+        CryptoAsset(symbol: 'USDT', name: 'Tether', price: 1.0, priceChangePercent: 0.0, sparklineData: _upTrend),
         CryptoAsset(symbol: 'UNI', name: 'Uniswap', price: 6.2, priceChangePercent: 0.5, sparklineData: _upTrend),
         CryptoAsset(symbol: 'ADA', name: 'Cardano', price: 0.48, priceChangePercent: -0.8, sparklineData: _downTrend),
       ];
@@ -110,10 +126,16 @@ class MockCrypto {
   static List<CryptoAsset> get newList => [
         CryptoAsset(symbol: 'BTC', name: 'Bitcoin', price: 160000, priceChangePercent: 4.5, sparklineData: _upTrend),
         CryptoAsset(symbol: 'FTT', name: 'FTX', price: 160000, priceChangePercent: -4.5, sparklineData: _downTrend),
+        CryptoAsset(symbol: 'MATIC', name: 'Polygon', price: 0.85, priceChangePercent: 2.1, sparklineData: _upTrend),
+        CryptoAsset(symbol: 'XRP', name: 'Ripple', price: 0.52, priceChangePercent: -1.2, sparklineData: _downTrend),
+        CryptoAsset(symbol: 'UNI', name: 'Uniswap', price: 6.2, priceChangePercent: 0.5, sparklineData: _upTrend),
       ];
 
   static List<CryptoAsset> get topAssets => [
         CryptoAsset(symbol: 'BTC', name: 'Bitcoin', price: 12.09, priceChangePercent: 0.68, sparklineData: _upTrend),
         CryptoAsset(symbol: 'ETH', name: 'Ethereum', price: 3200.5, priceChangePercent: 1.2, sparklineData: _upTrend),
+        CryptoAsset(symbol: 'MATIC', name: 'Polygon', price: 0.85, priceChangePercent: 2.1, sparklineData: _upTrend),
+        CryptoAsset(symbol: 'XRP', name: 'Ripple', price: 0.52, priceChangePercent: -1.2, sparklineData: _downTrend),
+        CryptoAsset(symbol: 'UNI', name: 'Uniswap', price: 6.2, priceChangePercent: 0.5, sparklineData: _upTrend),
       ];
 }

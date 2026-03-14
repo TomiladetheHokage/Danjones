@@ -1,10 +1,8 @@
 import 'dart:math';
-import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:fl_chart/fl_chart.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../widgets/sparkline_chart.dart';
 import '../theme/app_theme.dart';
+import 'top_movers_screen.dart';
 
 class CryptoDashboard extends StatefulWidget {
   const CryptoDashboard({super.key});
@@ -153,7 +151,7 @@ SliverToBoxAdapter _buildBalanceSection() {
                 children: [
                   Text(
                     'Total Equity (NGN)',
-                    style: GoogleFonts.inter( // Font changed to Inter
+                    style: AppTheme.inter(
                       color: Colors.white54, 
                       fontSize: 14,
                     ),
@@ -172,9 +170,9 @@ SliverToBoxAdapter _buildBalanceSection() {
               const SizedBox(height: 12),
               Text(
                 _hideBalance ? '••••••••' : '₦ 12,450,200.50',
-                style: GoogleFonts.inter( // Font changed to Inter
+                style: AppTheme.inter(
                   color: Colors.white, 
-                  fontSize: 32, // Adjusted slightly for Inter's weight
+                  fontSize: 32,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -186,8 +184,8 @@ SliverToBoxAdapter _buildBalanceSection() {
                   borderRadius: BorderRadius.circular(100),
                 ),
                 child: Text(
-                  '+ ₦25,000 (2.4%)', // Added the '+' operator
-                  style: GoogleFonts.inter( // Font changed to Inter
+                  '+ ₦25,000 (2.4%)',
+                  style: AppTheme.inter(
                     color: const Color(0xFF45E555), 
                     fontSize: 13, 
                     fontWeight: FontWeight.w600,
@@ -241,7 +239,13 @@ SliverToBoxAdapter _buildBalanceSection() {
         ),
         child: Row(
           children: [
-            _toggleBtn('Top Movers', _isMoversSelected, () => setState(() => _isMoversSelected = true)),
+            _toggleBtn('Top Movers', _isMoversSelected, () {
+              setState(() => _isMoversSelected = true);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const TopMoversScreen()),
+              );
+            }),
             _toggleBtn('Top Losers', !_isMoversSelected, () => setState(() => _isMoversSelected = false)),
           ],
         ),
@@ -277,25 +281,33 @@ child: Text(
         children: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 15),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Top Movers',
-                  style: AppTheme.inter(
-                    color: Colors.white,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
+            child: GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const TopMoversScreen()),
+                );
+              },
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Top Movers',
+                    style: AppTheme.inter(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),               
+                  Text(
+                    'View all',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                    ),
                   ),
-                ),               
-                Text(
-                  'View all',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 13,
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
           SizedBox(
@@ -308,9 +320,9 @@ child: Text(
   children: [
     // Add this SizedBox here to push the BTC card to the right
     const SizedBox(width: 8), 
-    _moverCard('BTC', 'Bitcoin', '₦12,450,200', '+4.5%', _btcData, 'assets/icons/BTC.png'),
+    _moverCard(context, 'BTC', 'Bitcoin', '₦12,450,200', '+4.5%', _btcData, 'assets/icons/BTC.png'),
     const SizedBox(width: 1),
-    _moverCard('ETH', 'Ethereum', '₦1,250,000', '+2.1%', _ethData, 'assets/icons/ETH.png'),
+    _moverCard(context, 'ETH', 'Ethereum', '₦1,250,000', '+2.1%', _ethData, 'assets/icons/ETH.png'),
   ],
 ),
               ),
@@ -321,17 +333,24 @@ child: Text(
     );
   }
 
-Widget _moverCard(String sym, String name, String price, String change, List<double> data, String img) {
-  return Container(
-    width: 180, // Balanced width
-    margin: const EdgeInsets.only(right: 14),
-    padding: const EdgeInsets.all(16),
-    decoration: BoxDecoration(
-      color: const Color(0xFF111111), // Dark charcoal
-      borderRadius: BorderRadius.circular(24),
-      border: Border.all(color: Colors.white.withOpacity(0.08)),
-    ),
-    child: Column(
+Widget _moverCard(BuildContext context, String sym, String name, String price, String change, List<double> data, String img) {
+  return GestureDetector(
+    onTap: () {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const TopMoversScreen()),
+      );
+    },
+    child: Container(
+      width: 180, // Balanced width
+      margin: const EdgeInsets.only(right: 14),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF111111), // Dark charcoal
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
+      ),
+      child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // TOP ROW: Large Icon + (Symbol/Name) + Pill on far right
@@ -342,8 +361,8 @@ Widget _moverCard(String sym, String name, String price, String change, List<dou
             Image.asset(
               img, 
               width: 44, 
-              height: 44, 
-              errorBuilder: (c, e, s) => const Icon(Icons.circle, color: Colors.white10, size: 44)
+              height: 44,
+              fit: BoxFit.contain,
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -355,7 +374,7 @@ Widget _moverCard(String sym, String name, String price, String change, List<dou
                     children: [
                       Text(
                         sym, 
-                        style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)
+                        style: AppTheme.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)
                       ),
                       // Percentage Pill (Oval Stuff)
                       Container(
@@ -366,14 +385,14 @@ Widget _moverCard(String sym, String name, String price, String change, List<dou
                         ),
                         child: Text(
                           change, 
-                          style: GoogleFonts.inter(color: const Color(0xFF52D377), fontSize: 9, fontWeight: FontWeight.bold),
+                          style: AppTheme.inter(color: const Color(0xFF52D377), fontSize: 9, fontWeight: FontWeight.bold),
                         ),
                       ),
                     ],
                   ),
                   Text(
                     name, 
-                    style: GoogleFonts.inter(color: Colors.white38, fontSize: 11)
+                    style: AppTheme.inter(color: Colors.white38, fontSize: 11)
                   ),
                 ],
               ),
@@ -394,10 +413,10 @@ Widget _moverCard(String sym, String name, String price, String change, List<dou
 
         // BOTTOM: Amount (Right Aligned)
         Align(
-          alignment: Alignment.bottomRight, // Pushes price to the right
+          alignment: Alignment.bottomRight,
           child: Text(
             price, 
-            style: GoogleFonts.inter(
+            style: AppTheme.inter(
               color: Colors.white, 
               fontSize: 18, 
               fontWeight: FontWeight.bold,
@@ -406,7 +425,7 @@ Widget _moverCard(String sym, String name, String price, String change, List<dou
         ),
       ],
     ),
-  );
+  ));
 }
 
   SliverToBoxAdapter _buildTokenHeader() {

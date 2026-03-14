@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
-import '../models/crypto_asset.dart';
+import '../models/crypto_asset.dart'; // Ensure this path is correct
 import 'sparkline_chart.dart';
 import '../theme/app_theme.dart';
 
-/// Single row for token/asset list: icon, name, sparkline, price and change.
 class TokenListItem extends StatelessWidget {
   final CryptoAsset asset;
   final VoidCallback? onTap;
@@ -14,75 +13,63 @@ class TokenListItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.08), width: 0.8)),
+        ),
+        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
         child: Row(
           children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: const Color(0xFFE4B53E).withValues(alpha: 0.2),
-                shape: BoxShape.circle,
-              ),
-              alignment: Alignment.center,
-              child: Text(
-                asset.symbol.length >= 2 ? asset.symbol.substring(0, 2) : asset.symbol,
-                style: AppTheme.inter(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: const Color(0xFFE4B53E),
+            // 1. IMAGE: Clean, no circle background
+            SizedBox(
+              width: 32,
+              height: 32,
+              child: Image.asset('assets/icons/${asset.symbol.toUpperCase()}.png', 
+                errorBuilder: (context, error, stackTrace) => const Icon(Icons.token, color: Colors.white24)),
+            ),
+            const SizedBox(width: 12),
+
+            // 2. NAME & SYMBOL
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(asset.symbol.toUpperCase(), style: AppTheme.inter(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+                Text(asset.name, style: AppTheme.inter(fontSize: 12, color: Colors.white38)),
+              ],
+            ),
+
+            // 3. THE CHART: Placed in Expanded + Center to fill the gap properly
+            Expanded(
+              child: Center(
+                child: SizedBox(
+                  width: 70, // Fixed width prevents the "hill" look
+                  height: 35,
+                  child: SparklineChart(data: asset.sparklineData, isPositive: asset.isPositive),
                 ),
               ),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    asset.name,
-                    style: AppTheme.inter(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                    ),
-                  ),
-                  Text(
-                    '${asset.price.toStringAsFixed(5)} (${asset.formattedPrice})',
-                    style: AppTheme.inter(
-                      fontSize: 12,
-                      color: Colors.white54,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            SparklineChart(
-              data: asset.sparklineData,
-              isPositive: asset.isPositive,
-              width: 64,
-              height: 28,
-            ),
-            const SizedBox(width: 12),
+
+            // 4. PRICE & BALANCE
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  asset.formattedPrice,
-                  style: AppTheme.inter(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                  ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
+                  children: [
+                    Text('3.00912', style: AppTheme.inter(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white)),
+                    const SizedBox(width: 4),
+                    Text('(\$12.09)', style: AppTheme.inter(fontSize: 11, color: Colors.white38)),
+                  ],
                 ),
+                const SizedBox(height: 4),
                 Text(
-                  '(${asset.changeText})',
-                  style: AppTheme.inter(
-                    fontSize: 12,
-                    color: asset.isPositive ? const Color(0xFF22C55E) : const Color(0xFFEF4444),
-                  ),
+                  asset.isPositive ? '(+0.68%)' : '(${asset.changeText})',
+                  style: AppTheme.inter(fontSize: 11, fontWeight: FontWeight.bold, 
+                    color: asset.isPositive ? const Color(0xFF5ED5A8) : const Color(0xFFEF4444)),
                 ),
               ],
             ),

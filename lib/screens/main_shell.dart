@@ -12,6 +12,10 @@ class MainShell extends StatefulWidget {
 
 class _MainShellState extends State<MainShell> {
   int _currentIndex = 0;
+  final List<GlobalKey<NavigatorState>> _navigatorKeys = List.generate(
+    5,
+    (index) => GlobalKey<NavigatorState>(),
+  );
 
   static const List<_NavItem> _navItems = [
     _NavItem(icon: Icons.home_rounded, label: 'Home'),
@@ -23,20 +27,28 @@ class _MainShellState extends State<MainShell> {
 
   @override
   Widget build(BuildContext context) {
-    final List<Widget> pages = [
-      const CryptoDashboard(),
-      const MarketScreen(),
-      _placeholderPage('Trade'),
-      _placeholderPage('Assets'),
-      _placeholderPage('Menu'),
-    ];
     return Scaffold(
       backgroundColor: const Color(0xFF151515),
       body: IndexedStack(
-        index: _currentIndex.clamp(0, pages.length - 1),
-        children: pages,
+        index: _currentIndex.clamp(0, _navItems.length - 1),
+        children: [
+          _buildNavigator(0, const CryptoDashboard()),
+          _buildNavigator(1, const MarketScreen()),
+          _buildNavigator(2, _placeholderPage('Trade')),
+          _buildNavigator(3, _placeholderPage('Assets')),
+          _buildNavigator(4, _placeholderPage('Menu')),
+        ],
       ),
       bottomNavigationBar: _buildBottomNav(),
+    );
+  }
+
+  Widget _buildNavigator(int index, Widget home) {
+    return Navigator(
+      key: _navigatorKeys[index],
+      onGenerateRoute: (settings) {
+        return MaterialPageRoute(builder: (context) => home);
+      },
     );
   }
 
