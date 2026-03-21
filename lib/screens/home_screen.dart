@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../widgets/sparkline_chart.dart';
 import '../theme/app_theme.dart';
 import 'top_movers_screen.dart';
+import 'deposit_screen.dart';
 
 class CryptoDashboard extends StatefulWidget {
   const CryptoDashboard({super.key});
@@ -206,7 +207,11 @@ SliverToBoxAdapter _buildBalanceSection() {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            _actionItem('Deposit', 'assets/icons/deposit.png', true),
+            _actionItem('Deposit', 'assets/icons/deposit.png', true, onTap: () {
+              Navigator.of(context, rootNavigator: true).push(
+                MaterialPageRoute(builder: (context) => const DepositScreen()),
+              );
+            }),
             _actionItem('Buy', 'assets/icons/buy.png', false),
             _actionItem('Swap', 'assets/icons/swap.png', false),
             _actionItem('P2P', 'assets/icons/p2p.png', false),
@@ -216,13 +221,16 @@ SliverToBoxAdapter _buildBalanceSection() {
     );
   }
 
-  Widget _actionItem(String label, String iconPath, bool isGold) {
-    return Column(
-      children: [
-        Image.asset(iconPath, width: 65, height: 65),
-        const SizedBox(height: 8),
-        Text(label, style: AppTheme.inter(color: Colors.white70, fontSize: 13)),
-      ],
+  Widget _actionItem(String label, String iconPath, bool isGold, {VoidCallback? onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        children: [
+          Image.asset(iconPath, width: 65, height: 65),
+          const SizedBox(height: 8),
+          Text(label, style: AppTheme.inter(color: Colors.white70, fontSize: 13)),
+        ],
+      ),
     );
   }
 
@@ -241,8 +249,7 @@ SliverToBoxAdapter _buildBalanceSection() {
           children: [
             _toggleBtn('Top Movers', _isMoversSelected, () {
               setState(() => _isMoversSelected = true);
-              Navigator.push(
-                context,
+              Navigator.of(context, rootNavigator: true).push(
                 MaterialPageRoute(builder: (context) => const TopMoversScreen()),
               );
             }),
@@ -283,8 +290,7 @@ child: Text(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 15),
             child: GestureDetector(
               onTap: () {
-                Navigator.push(
-                  context,
+                Navigator.of(context, rootNavigator: true).push(
                   MaterialPageRoute(builder: (context) => const TopMoversScreen()),
                 );
               },
@@ -336,8 +342,7 @@ child: Text(
 Widget _moverCard(BuildContext context, String sym, String name, String price, String change, List<double> data, String img) {
   return GestureDetector(
     onTap: () {
-      Navigator.push(
-        context,
+      Navigator.of(context, rootNavigator: true).push(
         MaterialPageRoute(builder: (context) => const TopMoversScreen()),
       );
     },

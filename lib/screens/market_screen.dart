@@ -28,8 +28,7 @@ class MarketScreen extends StatelessWidget {
                 (context, index) => TokenListItem(
                   asset: MockCrypto.topAssets[index],
                   onTap: () {
-                    Navigator.push(
-                      context,
+                    Navigator.of(context, rootNavigator: true).push(
                       MaterialPageRoute(
                         builder: (context) => MarketAssetScreen(
                           asset: MockCrypto.topAssets[index],
@@ -122,8 +121,7 @@ class MarketScreen extends StatelessWidget {
                 CryptoCard(
                   asset: MockCrypto.topMovers[index],
                   onTap: () {
-                    Navigator.push(
-                      context,
+                    Navigator.of(context, rootNavigator: true).push(
                       MaterialPageRoute(
                         builder: (context) => MarketAssetScreen(
                           asset: MockCrypto.topMovers[index],
@@ -156,8 +154,7 @@ class MarketScreen extends StatelessWidget {
                 CryptoCard(
                   asset: MockCrypto.newList[index],
                   onTap: () {
-                    Navigator.push(
-                      context,
+                    Navigator.of(context, rootNavigator: true).push(
                       MaterialPageRoute(
                         builder: (context) => MarketAssetScreen(
                           asset: MockCrypto.newList[index],

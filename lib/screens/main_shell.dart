@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'home_screen.dart';
 import 'market_screen.dart';
+import 'assets_screen.dart';
 
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
@@ -35,7 +36,7 @@ class _MainShellState extends State<MainShell> {
           _buildNavigator(0, const CryptoDashboard()),
           _buildNavigator(1, const MarketScreen()),
           _buildNavigator(2, _placeholderPage('Trade')),
-          _buildNavigator(3, _placeholderPage('Assets')),
+          _buildNavigator(3, const AssetsScreen()),
           _buildNavigator(4, _placeholderPage('Menu')),
         ],
       ),
