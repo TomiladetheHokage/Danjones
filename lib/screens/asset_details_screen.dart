@@ -3,6 +3,7 @@ import '../models/crypto_asset.dart';
 import '../theme/app_theme.dart';
 import '../widgets/sparkline_chart.dart';
 import 'deposit_screen.dart';
+import 'main_shell.dart';
 
 class AssetDetailsScreen extends StatefulWidget {
   final CryptoAsset asset;
@@ -126,7 +127,10 @@ class _AssetDetailsScreenState extends State<AssetDetailsScreen> {
         const SizedBox(width: 24),
         _buildActionButton('assets/icons/buy.png', 'Buy'),
         const SizedBox(width: 24),
-        _buildActionButton('assets/icons/swap.png', 'Swap'),
+        _buildActionButton('assets/icons/swap.png', 'Swap', onTap: () {
+          Navigator.of(context, rootNavigator: true).pop();
+          mainShellKey.currentState?.setTab(2);
+        }),
       ],
     );
   }

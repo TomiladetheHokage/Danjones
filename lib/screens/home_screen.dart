@@ -4,6 +4,9 @@ import '../widgets/sparkline_chart.dart';
 import '../theme/app_theme.dart';
 import 'top_movers_screen.dart';
 import 'deposit_screen.dart';
+import 'swap_screen.dart';
+import 'main_shell.dart';
+import 'p2p_trading_screen.dart';
 
 class CryptoDashboard extends StatefulWidget {
   const CryptoDashboard({super.key});
@@ -213,8 +216,14 @@ SliverToBoxAdapter _buildBalanceSection() {
               );
             }),
             _actionItem('Buy', 'assets/icons/buy.png', false),
-            _actionItem('Swap', 'assets/icons/swap.png', false),
-            _actionItem('P2P', 'assets/icons/p2p.png', false),
+            _actionItem('Swap', 'assets/icons/swap.png', false, onTap: () {
+              mainShellKey.currentState?.setTab(2);
+            }),
+            _actionItem('P2P', 'assets/icons/p2p.png', false, onTap: () {
+              Navigator.of(context, rootNavigator: true).push(
+                MaterialPageRoute(builder: (context) => const P2PTradingScreen()),
+              );
+            }),
           ],
         ),
       ),

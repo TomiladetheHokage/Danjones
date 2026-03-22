@@ -49,7 +49,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         try {
                           Navigator.of(context).pushReplacement(
                             MaterialPageRoute(
-                              builder: (context) => const MainShell(),
+                              builder: (context) => MainShell(),
                             ),
                           );
                         } catch (e) {
@@ -273,7 +273,7 @@ Widget _buildMockup(int index) {
         } else {
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(
-              builder: (context) => const MainShell(),
+              builder: (context) => MainShell(),
             ),
           );
         }

@@ -3,16 +3,27 @@ import 'package:google_fonts/google_fonts.dart';
 import 'home_screen.dart';
 import 'market_screen.dart';
 import 'assets_screen.dart';
+import 'swap_screen.dart';
+
+final GlobalKey<MainShellState> mainShellKey = GlobalKey<MainShellState>();
 
 class MainShell extends StatefulWidget {
-  const MainShell({super.key});
+  MainShell({Key? key}) : super(key: key ?? mainShellKey);
 
   @override
-  State<MainShell> createState() => _MainShellState();
+  State<MainShell> createState() => MainShellState();
+
+  static MainShellState? of(BuildContext context) => context.findAncestorStateOfType<MainShellState>();
 }
 
-class _MainShellState extends State<MainShell> {
+class MainShellState extends State<MainShell> {
   int _currentIndex = 0;
+
+  void setTab(int index) {
+    if (mounted) {
+      setState(() => _currentIndex = index);
+    }
+  }
   final List<GlobalKey<NavigatorState>> _navigatorKeys = List.generate(
     5,
     (index) => GlobalKey<NavigatorState>(),
@@ -35,7 +46,7 @@ class _MainShellState extends State<MainShell> {
         children: [
           _buildNavigator(0, const CryptoDashboard()),
           _buildNavigator(1, const MarketScreen()),
-          _buildNavigator(2, _placeholderPage('Trade')),
+          _buildNavigator(2, const SwapScreen()),
           _buildNavigator(3, const AssetsScreen()),
           _buildNavigator(4, _placeholderPage('Menu')),
         ],
@@ -156,7 +167,7 @@ class _MainShellState extends State<MainShell> {
               ],
             ),
             child: const Icon(
-              Icons.show_chart_rounded,
+              Icons.swap_vert_rounded,
               color: Colors.black,
               size: 28,
             ),
