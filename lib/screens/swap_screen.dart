@@ -63,7 +63,13 @@ class _SwapScreenState extends State<SwapScreen> {
                   shape: BoxShape.circle,
                   border: Border.all(color: Colors.white.withOpacity(0.05)),
                 ),
-                child: const Icon(Icons.swap_vert_rounded, color: Color(0xFFE4B53E), size: 24),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.arrow_upward_rounded, color: Color(0xFFE4B53E), size: 22),
+                    Icon(Icons.arrow_downward_rounded, color: Colors.white, size: 22),
+                  ],
+                ),
               ),
             ),
             const SizedBox(height: 24),
@@ -116,25 +122,22 @@ class _SwapScreenState extends State<SwapScreen> {
               style: AppTheme.inter(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
             ),
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: const Color(0xFF151515),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Image.asset(tokenIcon, width: 20, height: 20),
-                const SizedBox(width: 8),
-                Text(
-                  tokenSymbol,
-                  style: AppTheme.inter(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(width: 4),
-                const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFFE4B53E), size: 20),
-              ],
-            ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Transform.translate(
+                offset: const Offset(0, 5),
+                child: Image.asset(tokenIcon, width: 44, height: 44),
+              ),
+              const SizedBox(width: 2),
+              Text(
+                tokenSymbol,
+                style: AppTheme.inter(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(width: 4),
+              const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFFE4B53E), size: 24),
+            ],
           ),
         ],
       ),

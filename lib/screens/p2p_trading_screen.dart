@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import 'create_ad_screen.dart';
+import 'p2p/p2p_order_confirmation_screen.dart';
+import 'p2p/p2p_seller_release_screen.dart';
 
 class P2PTradingScreen extends StatefulWidget {
   const P2PTradingScreen({super.key});
@@ -281,13 +283,28 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> {
               Row(
                 children: methods.map((m) => _buildMethodIndicator(m)).toList(),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(colors: [Color(0xFFF3C756), Color(0xFFB88A2D)]),
-                  borderRadius: BorderRadius.circular(20),
+              GestureDetector(
+                onTap: () {
+                  if (_isBuySelected) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const P2POrderConfirmationScreen()),
+                    );
+                  } else {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const P2PSellerReleaseScreen()),
+                    );
+                  }
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(colors: [Color(0xFFF3C756), Color(0xFFB88A2D)]),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(_isBuySelected ? 'Buy USDT' : 'Sell USDT', style: AppTheme.inter(color: Colors.black, fontSize: 13, fontWeight: FontWeight.w600)),
                 ),
-                child: Text('Buy USDT', style: AppTheme.inter(color: Colors.black, fontSize: 13, fontWeight: FontWeight.w600)),
               ),
             ],
           ),
