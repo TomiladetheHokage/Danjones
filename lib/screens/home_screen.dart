@@ -7,6 +7,7 @@ import 'deposit_screen.dart';
 import 'swap_screen.dart';
 import 'main_shell.dart';
 import 'p2p_trading_screen.dart';
+import 'profile_screen.dart';
 
 class CryptoDashboard extends StatefulWidget {
   const CryptoDashboard({super.key});
@@ -109,9 +110,16 @@ class _CryptoDashboardState extends State<CryptoDashboard> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const CircleAvatar(
-              radius: 22,
-              backgroundImage: AssetImage("assets/images/profile_picture.png"),
+            GestureDetector(
+              onTap: () {
+                Navigator.of(context, rootNavigator: true).push(
+                  MaterialPageRoute(builder: (context) => const ProfileScreen()),
+                );
+              },
+              child: const CircleAvatar(
+                radius: 22,
+                backgroundImage: AssetImage("assets/images/profile_picture.png"),
+              ),
             ),
             Row(
               children: [
