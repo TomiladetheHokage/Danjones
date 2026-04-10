@@ -1,18 +1,33 @@
 import 'package:flutter/material.dart';
-import '../models/crypto_asset.dart';
-import '../widgets/sparkline_chart.dart';
-import '../theme/app_theme.dart';
+import '../../models/crypto_asset.dart';
+import '../../widgets/sparkline_chart.dart';
+import '../../theme/app_theme.dart';
+import '../../services/crypto_service.dart';
 
-class TopMoversScreen extends StatelessWidget {
+class TopMoversScreen extends StatefulWidget {
   const TopMoversScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final List<CryptoAsset> moreMovers = [
-      ...MockCrypto.topMovers,
-      ...MockCrypto.topMovers,
-    ];
+  State<TopMoversScreen> createState() => _TopMoversScreenState();
+}
 
+class _TopMoversScreenState extends State<TopMoversScreen> {
+  late Future<List<CryptoAsset>> moversFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    moversFuture = CryptoService.fetchTopMovers();
+  }
+
+  Future<void> _refresh() async {
+    setState(() {
+      moversFuture = CryptoService.fetchTopMovers();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF050505),
       body: SafeArea(
@@ -21,26 +36,59 @@ class TopMoversScreen extends StatelessWidget {
             _buildHeader(context),
             _buildSearchBar(),
             Expanded(
-              child: ListView.separated(
-                physics: const BouncingScrollPhysics(),
-                itemCount: moreMovers.length,
-                // FIXED DIVIDER: LinearGradient shows better than Radial
-                separatorBuilder: (context, index) => Center(
-                  child: Container(
-                    height: 1,
-                    width: MediaQuery.of(context).size.width * 0.9,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          Colors.transparent,
-                          Colors.white.withOpacity(0.12), // Bright center
-                          Colors.transparent,
-                        ],
+              child: RefreshIndicator(
+                onRefresh: _refresh,
+                color: const Color(0xFFE4B53E),
+                backgroundColor: const Color(0xFF1E1E1E),
+                child: FutureBuilder<List<CryptoAsset>>(
+                  future: moversFuture,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator(color: Color(0xFFE4B53E)));
+                    } else if (snapshot.hasError) {
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.error_outline, color: Colors.redAccent, size: 48),
+                            const SizedBox(height: 16),
+                            const Text('Failed to load market data', style: TextStyle(color: Colors.white70)),
+                            const SizedBox(height: 8),
+                            ElevatedButton(
+                              onPressed: _refresh,
+                              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFE4B53E)),
+                              child: const Text('Retry', style: TextStyle(color: Colors.black)),
+                            )
+                          ],
+                        ),
+                      );
+                    } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                      return const Center(child: Text('No data found', style: TextStyle(color: Colors.white70)));
+                    }
+                    
+                    final moreMovers = snapshot.data!;
+                    return ListView.separated(
+                      physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+                      itemCount: moreMovers.length,
+                      separatorBuilder: (context, index) => Center(
+                        child: Container(
+                          height: 1,
+                          width: MediaQuery.of(context).size.width * 0.9,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                Colors.transparent,
+                                Colors.white.withOpacity(0.12),
+                                Colors.transparent,
+                              ],
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
+                      itemBuilder: (context, index) => _buildMoverItem(moreMovers[index]),
+                    );
+                  },
                 ),
-                itemBuilder: (context, index) => _buildMoverItem(moreMovers[index]),
               ),
             ),
           ],
@@ -204,20 +252,12 @@ Widget _buildMoverItem(CryptoAsset asset) {
                 crossAxisAlignment: CrossAxisAlignment.baseline,
                 textBaseline: TextBaseline.alphabetic,
                 children: [
-                  const Text(
-                    '3.00912',
-                    style: TextStyle(
+                  Text(
+                    asset.formattedPrice,
+                    style: const TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w400,
                       color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  const Text(
-                    '(\$12.09)',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Color(0xFFFAFAFA),
                     ),
                   ),
                 ],

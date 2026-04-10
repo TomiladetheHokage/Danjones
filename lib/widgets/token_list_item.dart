@@ -60,14 +60,12 @@ class TokenListItem extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.baseline,
                   textBaseline: TextBaseline.alphabetic,
                   children: [
-                    Text('3.00912', style: AppTheme.inter(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white)),
-                    const SizedBox(width: 4),
-                    Text('(\$12.09)', style: AppTheme.inter(fontSize: 11, color: Colors.white38)),
+                    Text(asset.formattedPrice, style: AppTheme.inter(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white)),
                   ],
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  asset.isPositive ? '(+0.68%)' : '(${asset.changeText})',
+                  '(${asset.changeText})',
                   style: AppTheme.inter(fontSize: 11, fontWeight: FontWeight.bold, 
                     color: asset.isPositive ? const Color(0xFF5ED5A8) : const Color(0xFFEF4444)),
                 ),

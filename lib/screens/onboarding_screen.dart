@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/onboarding_model.dart';
 import 'main_shell.dart';
+import 'auth/login_screen.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -46,18 +47,18 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     alignment: Alignment.topRight,
                     child: TextButton(
                       onPressed: () {
-                        try {
-                          Navigator.of(context).pushReplacement(
-                            MaterialPageRoute(
-                              builder: (context) => MainShell(),
-                            ),
-                          );
-                        } catch (e) {
-                          print('Navigation error: $e');
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Error: $e')),
-                          );
-                        }
+                          try {
+                            Navigator.of(context).pushReplacement(
+                              MaterialPageRoute(
+                                builder: (context) => LoginScreen(),
+                              ),
+                            );
+                          } catch (e) {
+                            print('Navigation error: $e');
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Error: $e')),
+                            );
+                          }
                       },
                       child: Text(
                         'Skip',

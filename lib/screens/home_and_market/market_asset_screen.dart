@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import '../widgets/interactive_chart/interactive_chart.dart';
-import '../widgets/interactive_chart/candle_data.dart';
-import '../widgets/interactive_chart/chart_style.dart';
+import '../../widgets/interactive_chart/interactive_chart.dart';
+import '../../widgets/interactive_chart/candle_data.dart';
+import '../../widgets/interactive_chart/chart_style.dart';
 import 'package:intl/intl.dart';
-import '../models/crypto_asset.dart';
-import '../theme/app_theme.dart';
+import '../../models/crypto_asset.dart';
+import '../../theme/app_theme.dart';
 import 'dart:math' as math;
 
 class MarketAssetScreen extends StatefulWidget {
@@ -81,9 +81,9 @@ class _MarketAssetScreenState extends State<MarketAssetScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const Text(
-            '\$64,000.00',
-            style: TextStyle(
+          Text(
+            widget.asset.formattedPrice,
+            style: const TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w500,
               color: Colors.white,
@@ -91,11 +91,11 @@ class _MarketAssetScreenState extends State<MarketAssetScreen> {
           ),
           Row(
             children: [
-              const Text(
-                '+2.73%',
+              Text(
+                widget.asset.changeText,
                 style: TextStyle(
                   fontSize: 14,
-                  color: Color(0xFF52D377),
+                  color: widget.asset.isPositive ? const Color(0xFF52D377) : const Color(0xFFEF4444),
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -113,18 +113,16 @@ class _MarketAssetScreenState extends State<MarketAssetScreen> {
   }
 
   Widget _buildChartSection() {
-    final DateTime now = DateTime.now();
-    final List<CandleData> figmaData = List.generate(300, (index) {
-      double basePrice = 64000.0 + (math.sin(index * 0.1) * 3000.0);
-      bool isUp = index % 3 == 0;
+    final List<CandleData> chartData = List.generate(widget.asset.sparklineData.length, (index) {
+      double price = widget.asset.sparklineData[index];
+      double openPrice = index > 0 ? widget.asset.sparklineData[index - 1] : price;
+      
       return CandleData(
-        timestamp: now
-            .subtract(Duration(hours: 300 - index))
-            .millisecondsSinceEpoch,
-        open: basePrice,
-        close: basePrice + (isUp ? 150.0 : -150.0),
-        high: basePrice + 250.0,
-        low: basePrice - 250.0,
+        timestamp: DateTime.now().subtract(Duration(hours: widget.asset.sparklineData.length - index)).millisecondsSinceEpoch,
+        open: openPrice,
+        close: price,
+        high: math.max(openPrice, price) * 1.001,
+        low: math.min(openPrice, price) * 0.999,
         volume: 0,
       );
     });
@@ -136,7 +134,7 @@ class _MarketAssetScreenState extends State<MarketAssetScreen> {
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: InteractiveChart(
-            candles: figmaData,
+            candles: chartData.isNotEmpty ? chartData : [CandleData(timestamp: 0, open: 0, close: 0, high: 0, low: 0, volume: 0)],
             initialVisibleCandleCount: 25,
             timeLabel: (timestamp, visibleDataCount) => "",
             style: ChartStyle(
@@ -317,9 +315,9 @@ class _MarketAssetScreenState extends State<MarketAssetScreen> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  const Text(
-                    "\$3.00912",
-                    style: TextStyle(
+                  Text(
+                    widget.asset.formattedPrice,
+                    style: const TextStyle(
                       color: Colors.white,
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -327,9 +325,9 @@ class _MarketAssetScreenState extends State<MarketAssetScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    "(+0.68%)",
+                    "(${widget.asset.changeText})",
                     style: TextStyle(
-                      color: const Color(0xFF52D377),
+                      color: widget.asset.isPositive ? const Color(0xFF52D377) : const Color(0xFFEF4444),
                       fontSize: 13,
                       fontWeight: FontWeight.w500,
                     ),

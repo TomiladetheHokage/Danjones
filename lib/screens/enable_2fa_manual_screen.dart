@@ -183,18 +183,16 @@ class _Enable2faManualScreenState extends State<Enable2faManualScreen> {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(30),
                   border: Border.all(color: Colors.white.withOpacity(0.08)),
-                  gradient: LinearGradient(
+                  gradient: const LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: _isBackedUp 
-                        ? [const Color(0xFFE4B53E), const Color(0xFFA7711E)]
-                        : [Colors.white.withOpacity(0.1), Colors.white.withOpacity(0.1)],
+                    colors: [Color(0xFFE4B53E), Color(0xFFB88A2D)],
                   ),
                 ),
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.transparent,
-                    foregroundColor: _isBackedUp ? Colors.black : Colors.white54,
+                    foregroundColor: _isBackedUp ? Colors.black : Colors.black54,
                     shadowColor: Colors.transparent,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(30),
@@ -206,10 +204,14 @@ class _Enable2faManualScreenState extends State<Enable2faManualScreen> {
                       MaterialPageRoute(builder: (context) => const TwoFactorAuthScreen()),
                     );
                   } : null,
-                  child: Text(
-                    'Next Step',
-                    style: AppTheme.inter(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
+                 child: Text(
+  'Next Step',
+  style: AppTheme.inter(
+    fontSize: 16, 
+    fontWeight: FontWeight.bold, // Switched to bold to match Figma
+    color: Colors.black,         // Added the black color
+  ), 
+),
                 ),
               ),
             ),

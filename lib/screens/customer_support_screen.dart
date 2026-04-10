@@ -105,9 +105,9 @@ class _CustomerSupportScreenState extends State<CustomerSupportScreen> {
               crossAxisCount: 2,
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              mainAxisSpacing: 12,
-              crossAxisSpacing: 12,
-              childAspectRatio: 2.2,
+              mainAxisSpacing: 16,
+              crossAxisSpacing: 16,
+              childAspectRatio: 1.6,
               children: [
                 _buildCategoryCard(Icons.flag_outlined, 'Getting Started'),
                 _buildCategoryCard(Icons.person_outline, 'Account Verification'),
@@ -186,7 +186,7 @@ class _CustomerSupportScreenState extends State<CustomerSupportScreen> {
                   icon: const Icon(Icons.headset_mic_outlined, size: 20),
                   label: Text(
                     'Contact Support',
-                    style: AppTheme.inter(fontSize: 16, fontWeight: FontWeight.bold),
+                    style: AppTheme.inter(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black),
                   ),
                 ),
               ),
@@ -200,24 +200,26 @@ class _CustomerSupportScreenState extends State<CustomerSupportScreen> {
 
   Widget _buildCategoryCard(IconData icon, String title) {
     return Container(
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: const Color(0xFF1C1D21),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.white.withOpacity(0.05)),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, color: const Color(0xFFE4B53E), size: 22),
-          const SizedBox(height: 8),
+          Icon(Icons.language, color: const Color(0xFFE4B53E), size: 24),
+          const SizedBox(height: 12),
           Text(
             title,
             style: AppTheme.inter(
               color: Colors.white,
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              height: 1.2,
             ),
-            textAlign: TextAlign.center,
           ),
         ],
       ),

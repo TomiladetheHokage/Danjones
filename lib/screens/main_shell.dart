@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'home_screen.dart';
-import 'market_screen.dart';
+import 'home_and_market/home_screen.dart';
+import 'home_and_market/market_screen.dart';
 import 'assets_screen.dart';
 import 'swap_screen.dart';
 

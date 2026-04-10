@@ -28,11 +28,11 @@ class Enable2faScanScreen extends StatelessWidget {
         centerTitle: true,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
+        padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 10),
+        physics: const BouncingScrollPhysics(),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            const SizedBox(height: 10),
             Text(
               'Scan QR Code',
               style: AppTheme.inter(
@@ -46,26 +46,26 @@ class Enable2faScanScreen extends StatelessWidget {
               'Open your authenticator app and scan\nthe QR code below to connect your\naccount.',
               textAlign: TextAlign.center,
               style: AppTheme.inter(
-                color: Colors.white54,
+                color: Colors.white38,
                 fontSize: 14,
                 height: 1.5,
               ),
             ),
-            const SizedBox(height: 40),
+            const SizedBox(height: 32),
             
-            // QR Code Placeholder
+            // QR Code Section
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: Colors.transparent,
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: const Icon(Icons.qr_code_2, size: 180, color: Colors.black),
+              child: const Icon(Icons.qr_code_2, size: 200, color: Colors.white),
             ),
             
-            const SizedBox(height: 40),
+            const SizedBox(height: 32),
             
-            // Manual Setup Key
+            // Manual Setup Key Header
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -74,7 +74,7 @@ class Enable2faScanScreen extends StatelessWidget {
                   style: AppTheme.inter(
                     color: Colors.white,
                     fontSize: 14,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
                 GestureDetector(
@@ -96,38 +96,54 @@ class Enable2faScanScreen extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 12),
+            
+            // Setup Key Box
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
                 color: const Color(0xFF1C1D21),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: Colors.white.withOpacity(0.05)),
               ),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'XJ92 4K1L 8M2P Q5R7',
-                    style: AppTheme.inter(
-                      color: Colors.white,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 1.2,
-                    ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'XJ92 4K1L 8M2P Q5R7',
+                        style: AppTheme.inter(
+                          color: Colors.white,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 1.1,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Setup Key',
+                        style: AppTheme.inter(
+                          color: const Color(0xFFE4B53E),
+                          fontSize: 10,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
                   ),
-                  const Icon(Icons.copy, color: Color(0xFFE4B53E), size: 18),
+                  const Spacer(),
+                  const Icon(Icons.copy_all_rounded, color: Color(0xFFE4B53E), size: 20),
                 ],
               ),
             ),
             
-            const SizedBox(height: 30),
+            const SizedBox(height: 24),
             
-            // Save this key Warning
+            // Warning Box
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: const Color(0xFF1C1D21),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: Colors.white.withOpacity(0.05)),
               ),
               child: Column(
@@ -142,37 +158,47 @@ class Enable2faScanScreen extends StatelessWidget {
                         style: AppTheme.inter(
                           color: const Color(0xFFE4B53E),
                           fontSize: 14,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
                   Text(
-                    'Store this setup key on paper. If you lose\nyour phone, this key is the only way to\nrecover your Google Authenticator.',
+                    'Store the setup key on paper. If you lose your phone, this key is the only way to recover your Google Authenticator.',
                     style: AppTheme.inter(
                       color: Colors.white54,
                       fontSize: 13,
-                      height: 1.5,
+                      height: 1.4,
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.android, color: Colors.white54, size: 18),
-                      const SizedBox(width: 6),
-                      Text('Android', style: AppTheme.inter(color: Colors.white54, fontSize: 13)),
-                      const SizedBox(width: 16),
-                      Container(width: 1, height: 12, color: Colors.white24),
-                      const SizedBox(width: 16),
-                      const Icon(Icons.apple, color: Colors.white54, size: 18),
-                      const SizedBox(width: 6),
-                      Text('iOS', style: AppTheme.inter(color: Colors.white54, fontSize: 13)),
-                    ],
-                  )
                 ],
               ),
+            ),
+            
+            const SizedBox(height: 20),
+            
+            // Device Icons (Outside the box)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.android, color: Colors.white30, size: 18),
+                const SizedBox(width: 8),
+                Text(
+                  'Android',
+                  style: AppTheme.inter(color: Colors.white30, fontSize: 14, fontWeight: FontWeight.bold),
+                ),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 20),
+                  child: Text('|', style: TextStyle(color: Colors.white10, fontSize: 16)),
+                ),
+                const Icon(Icons.phone_iphone, color: Colors.white30, size: 18),
+                const SizedBox(width: 8),
+                Text(
+                  'iOS',
+                  style: AppTheme.inter(color: Colors.white30, fontSize: 14, fontWeight: FontWeight.bold),
+                ),
+              ],
             ),
             
             const SizedBox(height: 40),
@@ -184,24 +210,19 @@ class Enable2faScanScreen extends StatelessWidget {
               child: Container(
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(30),
-                  border: Border.all(color: Colors.white.withOpacity(0.08)),
                   gradient: const LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: [Color(0xFFE4B53E), Color(0xFFA7711E)],
+                    colors: [Color(0xFFE4B53E), Color(0xFFB88A2D)],
                   ),
                 ),
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.transparent,
-                    foregroundColor: Colors.black,
                     shadowColor: Colors.transparent,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30),
-                    ),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                   ),
                   onPressed: () {
-                    // Temporarily navigating to Two Factor Auth Screen for demo
                     Navigator.push(
                       context,
                       MaterialPageRoute(builder: (context) => const TwoFactorAuthScreen()),
@@ -209,7 +230,11 @@ class Enable2faScanScreen extends StatelessWidget {
                   },
                   child: Text(
                     'Next Step',
-                    style: AppTheme.inter(fontSize: 16, fontWeight: FontWeight.bold),
+                    style: AppTheme.inter(
+                      color: Colors.black,
+                      fontSize: 16,
+                      fontWeight: FontWeight.normal,
+                    ),
                   ),
                 ),
               ),

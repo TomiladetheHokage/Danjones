@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'login_screen.dart';
 
 class SecurityVerificationScreen extends StatefulWidget {
-  const SecurityVerificationScreen({super.key});
+  final String email;
+  const SecurityVerificationScreen({super.key, required this.email});
 
   @override
   State<SecurityVerificationScreen> createState() => _SecurityVerificationScreenState();
@@ -65,21 +67,9 @@ class _SecurityVerificationScreenState extends State<SecurityVerificationScreen>
           ),
         ],
       ),
-      body: Stack(
-        children: [
-          // Hidden TextField to handle input
-          Opacity(
-            opacity: 0,
-            child: TextField(
-              controller: _controller,
-              focusNode: _focusNode,
-              keyboardType: TextInputType.number,
-              maxLength: 6,
-              onChanged: _onCodeChanged,
-            ),
-          ),
-          
-          Padding(
+      body: SafeArea(
+        child: SingleChildScrollView(
+          child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
@@ -101,8 +91,8 @@ class _SecurityVerificationScreenState extends State<SecurityVerificationScreen>
                     children: [
                       const TextSpan(text: 'Enter the 6-digit code sent to '),
                       TextSpan(
-                        text: '+234 80*** **85',
-                        style: GoogleFonts.outfit(color: Colors.white),
+                        text: widget.email,
+                        style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.bold),
                       ),
                     ],
                   ),
@@ -110,36 +100,58 @@ class _SecurityVerificationScreenState extends State<SecurityVerificationScreen>
                 const SizedBox(height: 48),
 
                 // OTP Display Boxes
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: List.generate(6, (index) {
-                    final isActive = _controller.text.length == index;
-                    final isFilled = _otpDigits[index].isNotEmpty;
-                    
-                    return Container(
-                      width: 45,
-                      height: 55,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF1E1E1E),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: isActive 
-                              ? const Color(0xFFE4B53E) 
-                              : (isFilled ? Colors.white30 : Colors.white10),
-                          width: isActive ? 1.5 : 1,
+                Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: List.generate(6, (index) {
+                        final isActive = _controller.text.length == index;
+                        final isFilled = _otpDigits[index].isNotEmpty;
+                        
+                        return Container(
+                          width: 45,
+                          height: 55,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF1E1E1E),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: isActive 
+                                  ? const Color(0xFFE4B53E) 
+                                  : (isFilled ? Colors.white30 : Colors.white10),
+                              width: isActive ? 1.5 : 1,
+                            ),
+                          ),
+                          child: Text(
+                            _otpDigits[index].isEmpty ? (isActive ? '|' : '*') : _otpDigits[index],
+                            style: GoogleFonts.outfit(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              color: isActive ? const Color(0xFFE4B53E) : Colors.white,
+                            ),
+                          ),
+                        );
+                      }),
+                    ),
+                    Positioned.fill(
+                      child: Opacity(
+                        opacity: 0.001,
+                        child: TextField(
+                          controller: _controller,
+                          focusNode: _focusNode,
+                          keyboardType: TextInputType.number,
+                          maxLength: 6,
+                          showCursor: false,
+                          decoration: const InputDecoration(
+                            counterText: '',
+                            border: OutlineInputBorder(borderSide: BorderSide.none),
+                          ),
+                          onChanged: _onCodeChanged,
                         ),
                       ),
-                      child: Text(
-                        _otpDigits[index].isEmpty ? (isActive ? '|' : '*') : _otpDigits[index],
-                        style: GoogleFonts.outfit(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: isActive ? const Color(0xFFE4B53E) : Colors.white,
-                        ),
-                      ),
-                    );
-                  }),
+                    ),
+                  ],
                 ),
 
                 const SizedBox(height: 32),
@@ -168,11 +180,7 @@ class _SecurityVerificationScreenState extends State<SecurityVerificationScreen>
                   height: 56,
                   child: ElevatedButton(
                     onPressed: () {
-                      // Navigate to dashboard or success screen (not yet created)
-                      // For now, maybe pop back to login
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Verification Successful!')),
-                      );
+                      _showSuccessDialog();
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFE4B53E),
@@ -193,12 +201,87 @@ class _SecurityVerificationScreenState extends State<SecurityVerificationScreen>
               ],
             ),
           ),
-          
-          // Simulated Keypad at bottom if needed, but system keyboard is better.
-          // The design shows a custom keypad, but for functionality, system keyboard is standard.
-          // I'll stick to system keyboard for better accessibility and implementation speed.
-        ],
+        ),
       ),
+    );
+  }
+
+  void _showSuccessDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return Dialog(
+          backgroundColor: const Color(0xFF1E1E1E),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE4B53E).withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.check_circle_rounded,
+                    color: Color(0xFFE4B53E),
+                    size: 48,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  'Verification Successful',
+                  style: GoogleFonts.outfit(
+                    color: Colors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Your account has been verified successfully. You can now access all features.',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.outfit(
+                    color: Colors.white54,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 32),
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.of(context).pushAndRemoveUntil(
+                          MaterialPageRoute(builder: (context) => const LoginScreen()),
+                          (route) => false,
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFE4B53E),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(25),
+                      ),
+                    ),
+                    child: Text(
+                      'Done',
+                      style: GoogleFonts.outfit(
+                        color: Colors.black,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

@@ -8,6 +8,7 @@ class CryptoAsset {
   final double priceChangePercent;
   final List<double> sparklineData;
   final bool isPositive;
+  final String? imagePath;
 
   const CryptoAsset({
     required this.symbol,
@@ -15,7 +16,31 @@ class CryptoAsset {
     required this.price,
     required this.priceChangePercent,
     required this.sparklineData,
+    this.imagePath,
   }) : isPositive = priceChangePercent >= 0;
+
+  factory CryptoAsset.fromJson(Map<String, dynamic> json) {
+    List<double> sparklineData = [];
+    if (json['sparkline_in_7d'] != null && json['sparkline_in_7d']['price'] != null) {
+      sparklineData = List<double>.from(json['sparkline_in_7d']['price'].map((e) => (e as num).toDouble()));
+    }
+    
+    // In case sparkline is empty or missing, provide dummy data to prevent rendering issues
+    if (sparklineData.isEmpty) {
+      sparklineData = [0.0, 0.0];
+    }
+    
+    final priceChange = (json['price_change_percentage_24h'] as num?)?.toDouble() ?? 0.0;
+    
+    return CryptoAsset(
+      symbol: json['symbol'] ?? '',
+      name: json['name'] ?? '',
+      price: (json['current_price'] as num?)?.toDouble() ?? 0.0,
+      priceChangePercent: priceChange,
+      sparklineData: sparklineData,
+      imagePath: json['imagePath'],
+    );
+  }
 
   static String _formatPrice(double p) {
     final s = p.toStringAsFixed(2);

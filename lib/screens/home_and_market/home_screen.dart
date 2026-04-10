@@ -1,13 +1,18 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
-import '../widgets/sparkline_chart.dart';
-import '../theme/app_theme.dart';
+import '../../widgets/sparkline_chart.dart';
+import '../../theme/app_theme.dart';
 import 'top_movers_screen.dart';
-import 'deposit_screen.dart';
-import 'swap_screen.dart';
-import 'main_shell.dart';
-import 'p2p_trading_screen.dart';
-import 'profile_screen.dart';
+import '../deposit_screen.dart';
+import '../swap_screen.dart';
+import '../main_shell.dart';
+import '../p2p_trading_screen.dart';
+import '../profile_screen.dart';
+import '../../services/crypto_service.dart';
+import '../../models/crypto_asset.dart';
+import '../../services/api_service.dart';
+import '../../models/user_profile.dart';
+import 'market_asset_screen.dart';
 
 class CryptoDashboard extends StatefulWidget {
   const CryptoDashboard({super.key});
@@ -19,10 +24,22 @@ class CryptoDashboard extends StatefulWidget {
 class _CryptoDashboardState extends State<CryptoDashboard> {
   bool _isMoversSelected = true;
   bool _hideBalance = false;
+  late Future<List<CryptoAsset>> dashboardFuture;
+  late Future<UserProfile> userFuture;
 
-  // FIX: Initialize immediately to prevent LateInitializationError
-  final List<double> _btcData = List.generate(20, (i) => 50.0 + Random().nextDouble() * 50);
-  final List<double> _ethData = List.generate(20, (i) => 40.0 + Random().nextDouble() * 60);
+  @override
+  void initState() {
+    super.initState();
+    dashboardFuture = CryptoService.fetchDashboardCurrencies();
+    userFuture = ApiService.getUserProfile();
+  }
+
+  Future<void> _refresh() async {
+    setState(() {
+      dashboardFuture = CryptoService.fetchDashboardCurrencies();
+      userFuture = ApiService.getUserProfile();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -79,21 +96,43 @@ class _CryptoDashboardState extends State<CryptoDashboard> {
             ),
           ),
 
-          /// MAIN CONTENT (Your original 700-line layout logic)
+          /// MAIN CONTENT
           SafeArea(
             bottom: false,
-            child: CustomScrollView(
-              physics: const BouncingScrollPhysics(),
-              slivers: [
-                _buildAppBar(),
-                _buildBalanceSection(),
-                _buildActionGrid(),
-                _buildMoversToggle(),
-                _buildHorizontalMovers(),
-                _buildTokenHeader(),
-                _buildTokenList(),
-                const SliverToBoxAdapter(child: SizedBox(height: 120)),
-              ],
+            child: RefreshIndicator(
+              onRefresh: _refresh,
+              color: const Color(0xFFE4B53E),
+              backgroundColor: const Color(0xFF1E1E1E),
+              child: FutureBuilder<List<CryptoAsset>>(
+                future: dashboardFuture,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator(color: Color(0xFFE4B53E)));
+                  } else if (snapshot.hasError) {
+                    return const Center(child: Text('Failed to load market data', style: TextStyle(color: Colors.white70)));
+                  } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                    return const Center(child: Text('No data found', style: TextStyle(color: Colors.white70)));
+                  }
+
+                  final allAssets = snapshot.data!;
+                  final topMovers = List<CryptoAsset>.from(allAssets)..sort((a, b) => b.priceChangePercent.compareTo(a.priceChangePercent));
+                  final assetsForList = List<CryptoAsset>.from(allAssets)..sort((a, b) => b.price.compareTo(a.price));
+
+                  return CustomScrollView(
+                    physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+                    slivers: [
+                      _buildAppBar(),
+                      _buildBalanceSection(),
+                      _buildActionGrid(),
+                      _buildMoversToggle(),
+                      _buildHorizontalMovers(topMovers),
+                      _buildTokenHeader(),
+                      _buildTokenList(assetsForList),
+                      const SliverToBoxAdapter(child: SizedBox(height: 120)),
+                    ],
+                  );
+                },
+              ),
             ),
           ),
         ],
@@ -116,9 +155,18 @@ class _CryptoDashboardState extends State<CryptoDashboard> {
                   MaterialPageRoute(builder: (context) => const ProfileScreen()),
                 );
               },
-              child: const CircleAvatar(
-                radius: 22,
-                backgroundImage: AssetImage("assets/images/profile_picture.png"),
+              child: FutureBuilder<UserProfile>(
+                future: userFuture,
+                builder: (context, snapshot) {
+                  ImageProvider avatarImage = const AssetImage("assets/images/profile_picture.png");
+                  if (snapshot.hasData && snapshot.data!.avatar != null && snapshot.data!.avatar!.isNotEmpty) {
+                    avatarImage = NetworkImage('https://api.danjones.ng${snapshot.data!.avatar}');
+                  }
+                  return CircleAvatar(
+                    radius: 22,
+                    backgroundImage: avatarImage,
+                  );
+                },
               ),
             ),
             Row(
@@ -299,38 +347,38 @@ child: Text(
     );
   }
 
-  SliverToBoxAdapter _buildHorizontalMovers() {
+  SliverToBoxAdapter _buildHorizontalMovers(List<CryptoAsset> assets) {
     return SliverToBoxAdapter(
       child: Column(
         children: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 15),
-            child: GestureDetector(
-              onTap: () {
-                Navigator.of(context, rootNavigator: true).push(
-                  MaterialPageRoute(builder: (context) => const TopMoversScreen()),
-                );
-              },
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Top Movers',
-                    style: AppTheme.inter(
-                      color: Colors.white,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),               
-                  Text(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Top Movers',
+                  style: AppTheme.inter(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () {
+                    Navigator.of(context, rootNavigator: true).push(
+                      MaterialPageRoute(builder: (context) => const TopMoversScreen()),
+                    );
+                  },
+                  child: const Text(
                     'View all',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 13,
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
           SizedBox(
@@ -339,15 +387,24 @@ child: Text(
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 physics: const BouncingScrollPhysics(),
-             child: Row(
-  children: [
-    // Add this SizedBox here to push the BTC card to the right
-    const SizedBox(width: 8), 
-    _moverCard(context, 'BTC', 'Bitcoin', '₦12,450,200', '+4.5%', _btcData, 'assets/icons/BTC.png'),
-    const SizedBox(width: 1),
-    _moverCard(context, 'ETH', 'Ethereum', '₦1,250,000', '+2.1%', _ethData, 'assets/icons/ETH.png'),
-  ],
-),
+                child: Row(
+                  children: [
+                    const SizedBox(width: 8),
+                    for (int index = 0; index < min(assets.length, 5); index++) ...[
+                        context,
+                        assets[index].symbol.toUpperCase(),
+                        assets[index].name,
+                        assets[index].formattedPrice,
+                        assets[index].changeText,
+                        assets[index].sparklineData,
+                        assets[index].imagePath ?? 'assets/icons/${assets[index].symbol.toUpperCase()}.png',
+                        assets[index].isPositive,
+                        assets[index],
+                      ),
+                      if (index < 4) const SizedBox(width: 1),
+                    ]
+                  ],
+                ),
               ),
             ),
           ),
@@ -356,11 +413,11 @@ child: Text(
     );
   }
 
-Widget _moverCard(BuildContext context, String sym, String name, String price, String change, List<double> data, String img) {
+Widget _moverCard(BuildContext context, String sym, String name, String price, String change, List<double> data, String img, bool isPositive, CryptoAsset asset) {
   return GestureDetector(
     onTap: () {
       Navigator.of(context, rootNavigator: true).push(
-        MaterialPageRoute(builder: (context) => const TopMoversScreen()),
+        MaterialPageRoute(builder: (context) => MarketAssetScreen(asset: asset)),
       );
     },
     child: Container(
@@ -380,12 +437,11 @@ Widget _moverCard(BuildContext context, String sym, String name, String price, S
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Bigger Image as requested
-            Image.asset(
-              img, 
-              width: 44, 
-              height: 44,
-              fit: BoxFit.contain,
-            ),
+            img.startsWith('http') 
+              ? Image.network(img, width: 44, height: 44, fit: BoxFit.contain, 
+                  errorBuilder: (_, __, ___) => Image.asset('assets/icons/BTC.png', width: 44, height: 44))
+              : Image.asset(img, width: 44, height: 44, fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) => Image.asset('assets/icons/BTC.png', width: 44, height: 44)),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
@@ -407,7 +463,7 @@ Widget _moverCard(BuildContext context, String sym, String name, String price, S
                         ),
                         child: Text(
                           change, 
-                          style: AppTheme.inter(color: const Color(0xFF52D377), fontSize: 9, fontWeight: FontWeight.bold),
+                          style: AppTheme.inter(color: isPositive ? const Color(0xFF52D377) : const Color(0xFFEF4444), fontSize: 9, fontWeight: FontWeight.bold),
                         ),
                       ),
                     ],
@@ -428,7 +484,7 @@ Widget _moverCard(BuildContext context, String sym, String name, String price, S
         SizedBox(
           height: 35, 
           width: double.infinity,
-          child: SparklineChart(data: data, isPositive: true),
+          child: SparklineChart(data: data, isPositive: isPositive),
         ),
 
         const Spacer(),
@@ -472,17 +528,33 @@ Text(
     );
   }
 
-  SliverList _buildTokenList() {
+  SliverList _buildTokenList(List<CryptoAsset> assets) {
     return SliverList(
       delegate: SliverChildBuilderDelegate(
-        (context, index) => ListTile(
-          contentPadding: const EdgeInsets.symmetric(horizontal: 20),
-          leading: CircleAvatar(backgroundColor: Color(0xFF1A1A1A)),
-          title: Text('Token $index', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-          subtitle: Text('Crypto Asset', style: TextStyle(color: Colors.white38)),
-          trailing: Text('₦1,200.00', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        ),
-        childCount: 5,
+        (context, index) {
+          final asset = assets[index];
+          return ListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 20),
+            leading: asset.imagePath != null 
+              ? Image.network(asset.imagePath!, width: 40, height: 40, 
+                  errorBuilder: (_, __, ___) => const CircleAvatar(backgroundColor: Color(0xFF1A1A1A)))
+              : Image.asset(
+                  'assets/icons/${asset.symbol.toUpperCase()}.png',
+                  width: 40,
+                  height: 40,
+                  errorBuilder: (_, __, ___) => const CircleAvatar(backgroundColor: Color(0xFF1A1A1A)),
+                ),
+            title: Text(asset.symbol.toUpperCase(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            subtitle: Text(asset.name, style: const TextStyle(color: Colors.white38)),
+            trailing: Text(asset.formattedPrice, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            onTap: () {
+              Navigator.of(context, rootNavigator: true).push(
+                MaterialPageRoute(builder: (context) => MarketAssetScreen(asset: asset)),
+              );
+            },
+          );
+        },
+        childCount: min(assets.length, 10),
       ),
     );
   }
