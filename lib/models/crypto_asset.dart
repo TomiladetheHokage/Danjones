@@ -9,6 +9,9 @@ class CryptoAsset {
   final List<double> sparklineData;
   final bool isPositive;
   final String? imagePath;
+  final double marketCap;
+  final double circulatingSupply;
+  final double maxSupply;
 
   const CryptoAsset({
     required this.symbol,
@@ -17,6 +20,9 @@ class CryptoAsset {
     required this.priceChangePercent,
     required this.sparklineData,
     this.imagePath,
+    this.marketCap = 0.0,
+    this.circulatingSupply = 0.0,
+    this.maxSupply = 0.0,
   }) : isPositive = priceChangePercent >= 0;
 
   factory CryptoAsset.fromJson(Map<String, dynamic> json) {
@@ -38,7 +44,10 @@ class CryptoAsset {
       price: (json['current_price'] as num?)?.toDouble() ?? 0.0,
       priceChangePercent: priceChange,
       sparklineData: sparklineData,
-      imagePath: json['imagePath'],
+      imagePath: json['image'],
+      marketCap: (json['market_cap'] as num?)?.toDouble() ?? 0.0,
+      circulatingSupply: (json['circulating_supply'] as num?)?.toDouble() ?? 0.0,
+      maxSupply: (json['max_supply'] as num?)?.toDouble() ?? (json['total_supply'] as num?)?.toDouble() ?? 0.0,
     );
   }
 
@@ -54,6 +63,18 @@ class CryptoAsset {
 
   String get formattedPrice => _formatPrice(price);
   String get changeText => '${isPositive ? '+' : ''}${priceChangePercent.toStringAsFixed(1)}%';
+
+  String get formattedMarketCap => _formatCompactValue(marketCap);
+  String get formattedCirculatingSupply => _formatCompactValue(circulatingSupply);
+  String get formattedMaxSupply => maxSupply > 0 ? _formatCompactValue(maxSupply) : '∞';
+
+  static String _formatCompactValue(double value) {
+    if (value >= 1e12) return '\$${(value / 1e12).toStringAsFixed(2)}T';
+    if (value >= 1e9) return '\$${(value / 1e9).toStringAsFixed(2)}B';
+    if (value >= 1e6) return '\$${(value / 1e6).toStringAsFixed(2)}M';
+    if (value >= 1e3) return '\$${(value / 1e3).toStringAsFixed(2)}K';
+    return value.toStringAsFixed(2);
+  }
 }
 
 /// Mock data for Home and Market screens.
@@ -83,6 +104,10 @@ class MockCrypto {
           price: 160000,
           priceChangePercent: 4.5,
           sparklineData: _upTrend,
+          imagePath: 'icons/BTC.png',
+          marketCap: 1200000000000,
+          circulatingSupply: 19500000,
+          maxSupply: 21000000,
         ),
         CryptoAsset(
           symbol: 'ETH',
@@ -90,10 +115,11 @@ class MockCrypto {
           price: 160000,
           priceChangePercent: 4.5,
           sparklineData: _upTrend,
+          imagePath: 'icons/ETH.png',
         ),
-        CryptoAsset(symbol: 'MATIC', name: 'Polygon', price: 0.85, priceChangePercent: 2.1, sparklineData: _upTrend),
-        CryptoAsset(symbol: 'XRP', name: 'Ripple', price: 0.52, priceChangePercent: -1.2, sparklineData: _downTrend),
-        CryptoAsset(symbol: 'UNI', name: 'Uniswap', price: 6.2, priceChangePercent: 0.5, sparklineData: _upTrend),
+        CryptoAsset(symbol: 'MATIC', name: 'Polygon', price: 0.85, priceChangePercent: 2.1, sparklineData: _upTrend, imagePath: 'icons/MATIC.png'),
+        CryptoAsset(symbol: 'XRP', name: 'Ripple', price: 0.52, priceChangePercent: -1.2, sparklineData: _downTrend, imagePath: 'icons/XRP.png'),
+        CryptoAsset(symbol: 'UNI', name: 'Uniswap', price: 6.2, priceChangePercent: 0.5, sparklineData: _upTrend, imagePath: 'icons/UNI.png'),
       ];
 
   static List<CryptoAsset> get topLosers => [

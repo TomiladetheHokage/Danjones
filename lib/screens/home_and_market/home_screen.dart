@@ -1,10 +1,10 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../widgets/sparkline_chart.dart';
 import '../../theme/app_theme.dart';
 import 'top_movers_screen.dart';
 import '../deposit_screen.dart';
-import '../swap_screen.dart';
 import '../main_shell.dart';
 import '../p2p_trading_screen.dart';
 import '../profile_screen.dart';
@@ -12,6 +12,9 @@ import '../../services/crypto_service.dart';
 import '../../models/crypto_asset.dart';
 import '../../services/api_service.dart';
 import '../../models/user_profile.dart';
+import '../../models/dashboard_data.dart';
+import '../../models/wallet.dart';
+import '../../services/data_store.dart';
 import 'market_asset_screen.dart';
 
 class CryptoDashboard extends StatefulWidget {
@@ -24,21 +27,45 @@ class CryptoDashboard extends StatefulWidget {
 class _CryptoDashboardState extends State<CryptoDashboard> {
   bool _isMoversSelected = true;
   bool _hideBalance = false;
-  late Future<List<CryptoAsset>> dashboardFuture;
-  late Future<UserProfile> userFuture;
+  late Future<List<CryptoAsset>> marketFuture;
 
   @override
   void initState() {
     super.initState();
-    dashboardFuture = CryptoService.fetchDashboardCurrencies();
-    userFuture = ApiService.getUserProfile();
+    _fetchInitialData();
+  }
+
+  Future<void> _fetchInitialData() async {
+    marketFuture = CryptoService.fetchDashboardCurrencies();
+    // Fetch dashboard data and update store
+    try {
+      final dashboardData = await ApiService.getDashboardData();
+      await DataStore.instance.updateDashboard(dashboardData);
+    } catch (e) {
+      debugPrint('Error fetching dashboard: $e');
+    }
   }
 
   Future<void> _refresh() async {
     setState(() {
-      dashboardFuture = CryptoService.fetchDashboardCurrencies();
-      userFuture = ApiService.getUserProfile();
+      marketFuture = CryptoService.fetchDashboardCurrencies();
     });
+    try {
+      final dashboardData = await ApiService.getDashboardData();
+      await DataStore.instance.updateDashboard(dashboardData);
+    } catch (e) {
+      debugPrint('Error refreshing dashboard: $e');
+    }
+  }
+
+  String _formatNgn(num p) {
+    final s = p.toStringAsFixed(2);
+    final parts = s.split('.');
+    final intPart = parts[0].replaceAllMapped(
+      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+      (m) => '${m[1]},',
+    );
+    return '$intPart.${parts[1]}';
   }
 
   @override
@@ -104,7 +131,7 @@ class _CryptoDashboardState extends State<CryptoDashboard> {
               color: const Color(0xFFE4B53E),
               backgroundColor: const Color(0xFF1E1E1E),
               child: FutureBuilder<List<CryptoAsset>>(
-                future: dashboardFuture,
+                future: marketFuture,
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(child: CircularProgressIndicator(color: Color(0xFFE4B53E)));
@@ -116,12 +143,26 @@ class _CryptoDashboardState extends State<CryptoDashboard> {
 
                   final allAssets = snapshot.data!;
                   final topMovers = List<CryptoAsset>.from(allAssets)..sort((a, b) => b.priceChangePercent.compareTo(a.priceChangePercent));
-                  final assetsForList = List<CryptoAsset>.from(allAssets)..sort((a, b) => b.price.compareTo(a.price));
 
-                  return CustomScrollView(
-                    physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
-                    slivers: [
-                      _buildAppBar(),
+                  return ValueListenableBuilder<DashboardData?>(
+                    valueListenable: DataStore.instance.dashboard,
+                    builder: (context, dashboard, _) {
+                      // Get symbols user owns
+                      final ownedSymbols = dashboard?.wallets.map((w) => w.currency.symbol.toUpperCase()).toSet() ?? {};
+
+                      // Prioritize owned assets, then sort by price
+                      final assetsForList = List<CryptoAsset>.from(allAssets)..sort((a, b) {
+                        final aOwned = ownedSymbols.contains(a.symbol.toUpperCase());
+                        final bOwned = ownedSymbols.contains(b.symbol.toUpperCase());
+                        if (aOwned && !bOwned) return -1;
+                        if (!aOwned && bOwned) return 1;
+                        return b.price.compareTo(a.price);
+                      });
+
+                      return CustomScrollView(
+                        physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+                        slivers: [
+                          _buildAppBar(),
                       _buildBalanceSection(),
                       _buildActionGrid(),
                       _buildMoversToggle(),
@@ -130,6 +171,8 @@ class _CryptoDashboardState extends State<CryptoDashboard> {
                       _buildTokenList(assetsForList),
                       const SliverToBoxAdapter(child: SizedBox(height: 120)),
                     ],
+                      );
+                    },
                   );
                 },
               ),
@@ -155,12 +198,13 @@ class _CryptoDashboardState extends State<CryptoDashboard> {
                   MaterialPageRoute(builder: (context) => const ProfileScreen()),
                 );
               },
-              child: FutureBuilder<UserProfile>(
-                future: userFuture,
-                builder: (context, snapshot) {
+              child: ValueListenableBuilder<DashboardData?>(
+                valueListenable: DataStore.instance.dashboard,
+                builder: (context, data, _) {
                   ImageProvider avatarImage = const AssetImage("assets/images/profile_picture.png");
-                  if (snapshot.hasData && snapshot.data!.avatar != null && snapshot.data!.avatar!.isNotEmpty) {
-                    avatarImage = NetworkImage('https://api.danjones.ng${snapshot.data!.avatar}');
+                  final user = data?.user;
+                  if (user != null && user.avatar != null && user.avatar!.isNotEmpty) {
+                    avatarImage = NetworkImage('https://api.danjones.ng${user.avatar}');
                   }
                   return CircleAvatar(
                     radius: 22,
@@ -228,13 +272,20 @@ SliverToBoxAdapter _buildBalanceSection() {
                 ],
               ),
               const SizedBox(height: 12),
-              Text(
-                _hideBalance ? '••••••••' : '₦ 12,450,200.50',
-                style: AppTheme.inter(
-                  color: Colors.white, 
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                ),
+              ValueListenableBuilder<DashboardData?>(
+                valueListenable: DataStore.instance.dashboard,
+                builder: (context, data, _) {
+                  final balance = data?.totalBalanceNgn ?? 0.0;
+                  final formatted = _formatNgn(balance);
+                  return Text(
+                    _hideBalance ? '••••••••' : '₦ $formatted',
+                    style: AppTheme.inter(
+                      color: Colors.white, 
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  );
+                },
               ),
               const SizedBox(height: 14),
               Container(
@@ -391,13 +442,14 @@ child: Text(
                   children: [
                     const SizedBox(width: 8),
                     for (int index = 0; index < min(assets.length, 5); index++) ...[
+                      _moverCard(
                         context,
                         assets[index].symbol.toUpperCase(),
                         assets[index].name,
                         assets[index].formattedPrice,
                         assets[index].changeText,
                         assets[index].sparklineData,
-                        assets[index].imagePath ?? 'assets/icons/${assets[index].symbol.toUpperCase()}.png',
+                        assets[index].imagePath ?? 'assets/icons/${assets[index].symbol.toLowerCase()}.png',
                         assets[index].isPositive,
                         assets[index],
                       ),
@@ -437,11 +489,36 @@ Widget _moverCard(BuildContext context, String sym, String name, String price, S
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Bigger Image as requested
-            img.startsWith('http') 
-              ? Image.network(img, width: 44, height: 44, fit: BoxFit.contain, 
-                  errorBuilder: (_, __, ___) => Image.asset('assets/icons/BTC.png', width: 44, height: 44))
-              : Image.asset(img, width: 44, height: 44, fit: BoxFit.contain,
-                  errorBuilder: (_, __, ___) => Image.asset('assets/icons/BTC.png', width: 44, height: 44)),
+            img.startsWith('http')
+              ? CachedNetworkImage(
+                  imageUrl: img,
+                  width: 44,
+                  height: 44,
+                  fit: BoxFit.contain,
+                  placeholder: (context, url) => Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.05),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Center(
+                      child: SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFE4B53E)),
+                      ),
+                    ),
+                  ),
+                  errorWidget: (context, url, error) => const Icon(Icons.token, color: Colors.white24, size: 44),
+                )
+              : Image.asset(
+                  img.startsWith('assets/') ? img : 'assets/$img',
+                  width: 44,
+                  height: 44,
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) => const Icon(Icons.token, color: Colors.white24, size: 44)
+                ),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
@@ -535,14 +612,34 @@ Text(
           final asset = assets[index];
           return ListTile(
             contentPadding: const EdgeInsets.symmetric(horizontal: 20),
-            leading: asset.imagePath != null 
-              ? Image.network(asset.imagePath!, width: 40, height: 40, 
-                  errorBuilder: (_, __, ___) => const CircleAvatar(backgroundColor: Color(0xFF1A1A1A)))
-              : Image.asset(
-                  'assets/icons/${asset.symbol.toUpperCase()}.png',
+            leading: asset.imagePath != null && asset.imagePath!.startsWith('http')
+              ? CachedNetworkImage(
+                  imageUrl: asset.imagePath!,
                   width: 40,
                   height: 40,
-                  errorBuilder: (_, __, ___) => const CircleAvatar(backgroundColor: Color(0xFF1A1A1A)),
+                  fit: BoxFit.contain,
+                  placeholder: (context, url) => Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.05),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Center(
+                      child: SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFE4B53E)),
+                      ),
+                    ),
+                  ),
+                  errorWidget: (context, url, error) => const Icon(Icons.token, color: Colors.white24, size: 40),
+                )
+              : Image.asset(
+                  'assets/icons/${asset.symbol.toLowerCase()}.png',
+                  width: 40,
+                  height: 40,
+                  errorBuilder: (_, __, ___) => const Icon(Icons.token, color: Colors.white24, size: 40),
                 ),
             title: Text(asset.symbol.toUpperCase(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
             subtitle: Text(asset.name, style: const TextStyle(color: Colors.white38)),

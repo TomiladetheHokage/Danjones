@@ -3,10 +3,12 @@ import 'package:device_preview/device_preview.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'screens/splash_screen.dart';
 import 'services/api_service.dart';
+import 'services/data_store.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await ApiService.initToken();
+  await DataStore.instance.init();
   runApp(
     DevicePreview(
       enabled: true, // Toggle true/false to show phone frame

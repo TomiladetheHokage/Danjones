@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../widgets/interactive_chart/interactive_chart.dart';
 import '../../widgets/interactive_chart/candle_data.dart';
 import '../../widgets/interactive_chart/chart_style.dart';
-import 'package:intl/intl.dart';
 import '../../models/crypto_asset.dart';
 import '../../theme/app_theme.dart';
 import 'dart:math' as math;
@@ -277,16 +277,7 @@ class _MarketAssetScreenState extends State<MarketAssetScreen> {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               // LEFT SIDE: Image Icon
-              Image.asset(
-                'assets/icons/${widget.asset.symbol}.png',
-                width: 44, // Increased size, removed bg
-                height: 44,
-                errorBuilder: (context, error, stackTrace) => const Icon(
-                  Icons.monetization_on,
-                  color: Colors.white24,
-                  size: 44,
-                ),
-              ),
+              _buildAssetIcon(widget.asset.imagePath, widget.asset.symbol),
               const SizedBox(width: 14),
               // SYMBOL AND SUBTITLE
               Column(
@@ -359,9 +350,9 @@ class _MarketAssetScreenState extends State<MarketAssetScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          _infoRow("Market Cap", "\$250M", fafaColor),
-          _infoRow("Circulating Supply", "10M", fafaColor),
-          _infoRow("Max Supply", "21M", fafaColor),
+          _infoRow("Market Cap", widget.asset.marketCap > 0 ? widget.asset.formattedMarketCap : '--', fafaColor),
+          _infoRow("Circulating Supply", widget.asset.circulatingSupply > 0 ? widget.asset.formattedCirculatingSupply : '--', fafaColor),
+          _infoRow("Max Supply", widget.asset.formattedMaxSupply, fafaColor),
         ],
       ),
     );
@@ -391,6 +382,40 @@ class _MarketAssetScreenState extends State<MarketAssetScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildAssetIcon(String? imagePath, String symbol) {
+    if (imagePath != null && imagePath.startsWith('http')) {
+      return CachedNetworkImage(
+        imageUrl: imagePath,
+        width: 44,
+        height: 44,
+        fit: BoxFit.contain,
+        placeholder: (context, url) => Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.05),
+            shape: BoxShape.circle,
+          ),
+          child: const Center(
+            child: SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFE4B53E)),
+            ),
+          ),
+        ),
+        errorWidget: (context, url, error) => const Icon(Icons.monetization_on, color: Colors.white24, size: 44),
+      );
+    }
+    return Image.asset(
+      'assets/icons/${symbol.toUpperCase()}.png',
+      width: 44,
+      height: 44,
+      errorBuilder: (context, error, stackTrace) =>
+          const Icon(Icons.monetization_on, color: Colors.white24, size: 44),
     );
   }
 

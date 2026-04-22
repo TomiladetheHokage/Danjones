@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
-import '../models/crypto_asset.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import '../models/wallet.dart';
 import '../theme/app_theme.dart';
 import '../widgets/sparkline_chart.dart';
+import '../services/crypto_service.dart';
+import '../models/crypto_asset.dart';
 import 'deposit_screen.dart';
 import 'main_shell.dart';
 
 class AssetDetailsScreen extends StatefulWidget {
-  final CryptoAsset asset;
+  final Wallet wallet;
 
-  const AssetDetailsScreen({super.key, required this.asset});
+  const AssetDetailsScreen({super.key, required this.wallet});
 
   @override
   State<AssetDetailsScreen> createState() => _AssetDetailsScreenState();
@@ -16,6 +19,24 @@ class AssetDetailsScreen extends StatefulWidget {
 
 class _AssetDetailsScreenState extends State<AssetDetailsScreen> {
   bool _showHistory = true;
+  CryptoAsset? _liveMarketData;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchLiveMarketData();
+  }
+
+  Future<void> _fetchLiveMarketData() async {
+    try {
+      final list = await CryptoService.fetchDashboardCurrencies();
+      final symbol = widget.wallet.currency.symbol.toUpperCase();
+      final match = list.where((c) => c.symbol.toUpperCase() == symbol).firstOrNull;
+      if (match != null && mounted) {
+        setState(() => _liveMarketData = match);
+      }
+    } catch (_) {}
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -29,7 +50,7 @@ class _AssetDetailsScreenState extends State<AssetDetailsScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          widget.asset.symbol.toUpperCase(),
+          widget.wallet.currency.symbol.toUpperCase(),
           style: AppTheme.inter(fontSize: 18, fontWeight: FontWeight.w600),
         ),
         centerTitle: true,
@@ -59,8 +80,14 @@ class _AssetDetailsScreenState extends State<AssetDetailsScreen> {
   }
 
   Widget _buildBalanceSection() {
+    final balance = double.tryParse(widget.wallet.balance) ?? 0.0;
+    final balanceUsd = widget.wallet.balanceUsd.toDouble();
+    final symbol = widget.wallet.currency.symbol.toUpperCase();
+    final imageUrl = widget.wallet.currency.fullImageUrl;
+
     return Column(
       children: [
+        // Token icon
         Container(
           height: 64,
           width: 64,
@@ -68,13 +95,26 @@ class _AssetDetailsScreenState extends State<AssetDetailsScreen> {
             shape: BoxShape.circle,
             color: Colors.white.withOpacity(0.05),
           ),
-          child: const Center(
-            child: Icon(Icons.currency_bitcoin, color: Color(0xFFD4A347), size: 32),
+          child: ClipOval(
+            child: imageUrl.startsWith('http')
+                ? CachedNetworkImage(
+                    imageUrl: imageUrl,
+                    width: 64,
+                    height: 64,
+                    fit: BoxFit.contain,
+                    placeholder: (context, url) => const Center(
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFE4B53E)),
+                    ),
+                    errorWidget: (context, url, error) =>
+                        const Icon(Icons.token, color: Color(0xFFD4A347), size: 32),
+                  )
+                : const Icon(Icons.currency_bitcoin, color: Color(0xFFD4A347), size: 32),
           ),
         ),
         const SizedBox(height: 16),
+        // Token balance
         Text(
-          '0.1298 ${widget.asset.symbol}',
+          '${balance.toStringAsFixed(widget.wallet.currency.decimalPlaces)} $symbol',
           style: AppTheme.inter(
             fontSize: 36,
             fontWeight: FontWeight.w700,
@@ -82,34 +122,14 @@ class _AssetDetailsScreenState extends State<AssetDetailsScreen> {
           ),
         ),
         const SizedBox(height: 8),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              '\$3.00912',
-              style: AppTheme.inter(
-                fontSize: 16,
-                color: Colors.white,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.green.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                '+4.5%',
-                style: AppTheme.inter(
-                  color: Colors.green,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
+        // USD value
+        Text(
+          '\$${balanceUsd.toStringAsFixed(2)}',
+          style: AppTheme.inter(
+            fontSize: 16,
+            color: Colors.white70,
+            fontWeight: FontWeight.w500,
+          ),
         ),
       ],
     );
@@ -142,10 +162,7 @@ class _AssetDetailsScreenState extends State<AssetDetailsScreen> {
         children: [
           Image.asset(iconPath, width: 65, height: 65),
           const SizedBox(height: 8),
-          Text(
-            label,
-            style: AppTheme.inter(fontSize: 13, color: Colors.white),
-          ),
+          Text(label, style: AppTheme.inter(fontSize: 13, color: Colors.white)),
         ],
       ),
     );
@@ -178,7 +195,9 @@ class _AssetDetailsScreenState extends State<AssetDetailsScreen> {
           alignment: Alignment.center,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(30),
-            gradient: isActive ? const LinearGradient(colors: [Color(0xFFE4B53E), Color(0xFFB88A2D)]) : null,
+            gradient: isActive
+                ? const LinearGradient(colors: [Color(0xFFE4B53E), Color(0xFFB88A2D)])
+                : null,
           ),
           child: Text(
             label,
@@ -207,6 +226,7 @@ class _AssetDetailsScreenState extends State<AssetDetailsScreen> {
   }
 
   Widget _buildHistoryItem() {
+    final symbol = widget.wallet.currency.symbol.toUpperCase();
     return Padding(
       padding: const EdgeInsets.only(bottom: 32),
       child: Column(
@@ -224,7 +244,7 @@ class _AssetDetailsScreenState extends State<AssetDetailsScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text('Receive', style: AppTheme.inter(fontWeight: FontWeight.w600, fontSize: 16, color: Colors.white)),
-              Text('0.0636 ${widget.asset.symbol}', style: AppTheme.inter(fontWeight: FontWeight.w700, fontSize: 16, color: Colors.white)),
+              Text('0.0636 $symbol', style: AppTheme.inter(fontWeight: FontWeight.w700, fontSize: 16, color: Colors.white)),
             ],
           ),
           const SizedBox(height: 6),
@@ -247,38 +267,45 @@ class _AssetDetailsScreenState extends State<AssetDetailsScreen> {
   }
 
   List<Widget> _buildInfoSection() {
+    final name = widget.wallet.currency.name;
+    final symbol = widget.wallet.currency.symbol.toUpperCase();
+
+    final mktCap = _liveMarketData != null && _liveMarketData!.marketCap > 0 
+        ? _liveMarketData!.formattedMarketCap : '\$250M';
+    final circ = _liveMarketData != null && _liveMarketData!.circulatingSupply > 0 
+        ? _liveMarketData!.formattedCirculatingSupply : '\$10M';
+    final max = _liveMarketData != null && _liveMarketData!.maxSupply > 0 
+        ? _liveMarketData!.formattedMaxSupply : '5M';
+
     return [
       const SizedBox(height: 16),
-      _buildInfoRow('Market Cap', '\$250M'),
-      _buildInfoRow('Circulating Supply', '\$10M'),
-      _buildInfoRow('Max Supply', '5M'),
+      _buildInfoRow('Market Cap', mktCap),
+      _buildInfoRow('Circulating Supply', circ),
+      _buildInfoRow('Max Supply', max),
       _buildInfoRow('Total Supply', '9M'),
       _buildInfoRow('All Time High', '\$40'),
       _buildInfoRow('All Time Low', '\$4'),
       const SizedBox(height: 4),
-     Center(
-  child: TextButton(
-    style: TextButton.styleFrom(
-      // Updated to your specific hex color #E4B53E
-      foregroundColor: const Color(0xFFE4B53E), 
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-    ),
-    onPressed: () {
-      // Add your navigation or logic here
-    },
-    child: Text(
-      'View More',
-      style: AppTheme.inter(
-        fontSize: 13,
-        fontWeight: FontWeight.w600, // Added semi-bold to make it pop
-        color: const Color(0xFFE4B53E), // Explicitly set to ensure it overrides defaults
+      Center(
+        child: TextButton(
+          style: TextButton.styleFrom(
+            foregroundColor: const Color(0xFFE4B53E),
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+          ),
+          onPressed: () {},
+          child: Text(
+            'View More',
+            style: AppTheme.inter(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: const Color(0xFFE4B53E),
+            ),
+          ),
+        ),
       ),
-    ),
-  ),
-),
       const SizedBox(height: 16),
       Text(
-        'About ${widget.asset.symbol == 'BTC' ? 'Bitcoin' : widget.asset.symbol}',
+        'About ${symbol == 'BTC' ? 'Bitcoin' : name}',
         style: AppTheme.inter(fontWeight: FontWeight.w600, fontSize: 16, color: Colors.white),
       ),
       const SizedBox(height: 12),
@@ -286,7 +313,7 @@ class _AssetDetailsScreenState extends State<AssetDetailsScreen> {
         'Bitcoin is a decentralized digital currency, without a central bank or single administrator, that can be sent from user to user on the peer-to-peer bitcoin network without the need for intermediaries.',
         style: AppTheme.inter(color: Colors.white.withOpacity(0.3), fontSize: 13, height: 1.5),
       ),
-      const SizedBox(height: 100), // Spacing for bottom scrolling past floating button
+      const SizedBox(height: 100),
     ];
   }
 

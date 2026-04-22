@@ -30,5 +30,11 @@ class Currency {
   }
 
   /// Returns the full URL for the currency image
-  String get fullImageUrl => 'https://api.danjones.ng$imagePath';
+  String get fullImageUrl {
+    if (imagePath.startsWith('http')) return imagePath;
+    final cleanPath = imagePath.startsWith('/') ? imagePath.substring(1) : imagePath;
+    // Added a timestamp cache-buster to bypass any cached CORS errors in the browser
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    return 'http://localhost:3000/$cleanPath?t=$timestamp';
+  }
 }

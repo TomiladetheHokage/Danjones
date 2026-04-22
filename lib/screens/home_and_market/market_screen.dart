@@ -189,7 +189,7 @@ class _MarketScreenState extends State<MarketScreen> {
                       ),
                     );
                   },
-                  imagePath: _getImagePath(assets[index].symbol),
+                  imagePath: assets[index].imagePath,
                 ),
                 if (index < assets.length - 1) const SizedBox(width: 1),
               ],
@@ -222,7 +222,7 @@ class _MarketScreenState extends State<MarketScreen> {
                       ),
                     );
                   },
-                  imagePath: _getImagePath(assets[index].symbol),
+                  imagePath: assets[index].imagePath,
                 ),
                 if (index < assets.length - 1) const SizedBox(width: 1),
               ],
@@ -233,22 +233,4 @@ class _MarketScreenState extends State<MarketScreen> {
     );
   }
 
-  String _getImagePath(String symbol) {
-    switch (symbol) {
-      case 'BTC':
-        return 'assets/icons/BTC.png';
-      case 'ETH':
-        return 'assets/icons/ETH.png';
-      case 'FTT':
-        return 'assets/icons/FTT.png';
-      case 'MATIC':
-        return 'assets/icons/MATIC.png';
-      case 'XRP':
-        return 'assets/icons/XRP.png';
-      case 'UNI':
-        return 'assets/icons/UNI.png';
-      default:
-        return 'assets/icons/BTC.png';
-    }
-  }
 }

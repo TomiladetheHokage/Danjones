@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:flutter/foundation.dart';
 import '../models/crypto_asset.dart';
 import 'api_service.dart';
 
@@ -22,6 +23,9 @@ class CryptoService {
         
         // Merge
         for (var currency in backendCurrencies) {
+          // Skip Naira in the crypto list
+          if (currency.symbol.toUpperCase() == 'NGN') continue;
+          
           // Find matching symbol in CoinGecko
           final cgMatch = cgData.firstWhere(
             (json) => json['symbol'].toString().toLowerCase() == currency.symbol.toLowerCase(),
@@ -30,6 +34,7 @@ class CryptoService {
           
           if (cgMatch != null) {
             final asset = CryptoAsset.fromJson(cgMatch);
+            debugPrint('Matched ${currency.symbol} with CoinGecko data. Image: ${currency.fullImageUrl}');
             result.add(CryptoAsset(
               symbol: currency.symbol,
               name: currency.name,
@@ -37,8 +42,12 @@ class CryptoService {
               priceChangePercent: asset.priceChangePercent,
               sparklineData: asset.sparklineData,
               imagePath: currency.fullImageUrl,
+              marketCap: asset.marketCap,
+              circulatingSupply: asset.circulatingSupply,
+              maxSupply: asset.maxSupply,
             ));
           } else {
+            debugPrint('No CoinGecko match for ${currency.symbol}. Using fallback. Image: ${currency.fullImageUrl}');
             // Provide sensible fallbacks if missing (e.g. for NGN or fiat)
             result.add(CryptoAsset(
               symbol: currency.symbol,
@@ -57,5 +66,9 @@ class CryptoService {
     } catch (e) {
       throw Exception('Failed to fetch data: $e');
     }
+  }
+
+  static Future<List<CryptoAsset>> fetchTopMovers() async {
+    return fetchDashboardCurrencies();
   }
 }

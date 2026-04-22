@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../models/crypto_asset.dart';
 import 'sparkline_chart.dart';
 import '../theme/app_theme.dart';
@@ -116,20 +117,44 @@ class CryptoCard extends StatelessWidget {
   }
 
   Widget _buildCryptoImage(String imagePath) {
+    if (imagePath.startsWith('http')) {
+      return CachedNetworkImage(
+        imageUrl: imagePath,
+        width: 44,
+        height: 44,
+        fit: BoxFit.contain,
+        placeholder: (context, url) => Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.05),
+            shape: BoxShape.circle,
+          ),
+          child: const Center(
+            child: SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFE4B53E)),
+            ),
+          ),
+        ),
+        errorWidget: (context, url, error) => const Icon(Icons.token, color: Colors.white24, size: 44),
+      );
+    }
+
     if (imagePath.endsWith('.svg')) {
-      // Try SVG first
       return SvgPicture.asset(
         imagePath,
         width: 44,
         height: 44,
       );
     } else {
-      // Use PNG
       return Image.asset(
-        imagePath,
+        imagePath.startsWith('assets/') ? imagePath : 'assets/$imagePath',
         width: 44,
         height: 44,
         fit: BoxFit.contain,
+        errorBuilder: (context, error, stackTrace) => const Icon(Icons.token, color: Colors.white24, size: 44),
       );
     }
   }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../models/crypto_asset.dart'; // Ensure this path is correct
+import 'package:cached_network_image/cached_network_image.dart';
+import '../models/crypto_asset.dart';
 import 'sparkline_chart.dart';
 import '../theme/app_theme.dart';
 
@@ -24,8 +25,7 @@ class TokenListItem extends StatelessWidget {
             SizedBox(
               width: 32,
               height: 32,
-              child: Image.asset('assets/icons/${asset.symbol.toUpperCase()}.png', 
-                errorBuilder: (context, error, stackTrace) => const Icon(Icons.token, color: Colors.white24)),
+              child: _buildTokenImage(asset.imagePath, asset.symbol),
             ),
             const SizedBox(width: 12),
 
@@ -74,6 +74,40 @@ class TokenListItem extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildTokenImage(String? imagePath, String symbol) {
+    if (imagePath != null && imagePath.startsWith('http')) {
+      return CachedNetworkImage(
+        imageUrl: imagePath,
+        width: 32,
+        height: 32,
+        fit: BoxFit.contain,
+        placeholder: (context, url) => Container(
+          width: 32,
+          height: 32,
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.05),
+            shape: BoxShape.circle,
+          ),
+          child: const Center(
+            child: SizedBox(
+              width: 12,
+              height: 12,
+              child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFE4B53E)),
+            ),
+          ),
+        ),
+        errorWidget: (context, url, error) => const Icon(Icons.token, color: Colors.white24, size: 32),
+      );
+    }
+
+    return Image.asset(
+      'assets/icons/${symbol.toUpperCase()}.png',
+      width: 32,
+      height: 32,
+      errorBuilder: (context, error, stackTrace) => const Icon(Icons.token, color: Colors.white24, size: 32),
     );
   }
 }

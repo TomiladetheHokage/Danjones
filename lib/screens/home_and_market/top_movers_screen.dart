@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../models/crypto_asset.dart';
 import '../../widgets/sparkline_chart.dart';
 import '../../theme/app_theme.dart';
@@ -177,6 +178,36 @@ Widget _buildSearchBar() {
   );
 }
 
+Widget _buildTokenImage(String? imagePath, String symbol) {
+  if (imagePath != null && imagePath.startsWith('http')) {
+    return CachedNetworkImage(
+      imageUrl: imagePath,
+      width: 56,
+      height: 56,
+      fit: BoxFit.contain,
+      placeholder: (context, url) => Container(
+        width: 56,
+        height: 56,
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.05),
+          shape: BoxShape.circle,
+        ),
+        child: const Center(
+          child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFE4B53E)),
+        ),
+      ),
+      errorWidget: (context, url, error) => const Icon(Icons.token, color: Colors.white24, size: 56),
+    );
+  }
+
+  return Image.asset(
+    'assets/icons/${symbol.toUpperCase()}.png',
+    fit: BoxFit.contain,
+    errorBuilder: (context, error, stackTrace) =>
+        const Icon(Icons.token, color: Colors.white24, size: 56),
+  );
+}
+
 Widget _buildMoverItem(CryptoAsset asset) {
   return Padding(
     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
@@ -189,12 +220,7 @@ Widget _buildMoverItem(CryptoAsset asset) {
           child: SizedBox(
             width: 56,
             height: 56,
-            child: Image.asset(
-              'assets/icons/${asset.symbol.toUpperCase()}.png',
-              fit: BoxFit.contain,
-              errorBuilder: (context, error, stackTrace) =>
-                  const Icon(Icons.token, color: Colors.white24, size: 56),
-            ),
+            child: _buildTokenImage(asset.imagePath, asset.symbol),
           ),
         ),
 
