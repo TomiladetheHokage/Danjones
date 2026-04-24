@@ -64,7 +64,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                     ],
                   ),
                   child: Image.asset(
-                    'assets/images/Danjones Logo.png',
+                    'assets/images/Danjones-Logo.png',
                     errorBuilder: (context, error, stackTrace) {
                       return CircleAvatar(
                         backgroundColor: const Color(0xFFE4B53E),

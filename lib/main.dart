@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:device_preview/device_preview.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'screens/splash_screen.dart';
@@ -7,11 +8,17 @@ import 'services/data_store.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await ApiService.initToken();
-  await DataStore.instance.init();
+  
+  try {
+    await ApiService.initToken();
+    await DataStore.instance.init();
+  } catch (e) {
+    debugPrint('Initialization error: $e');
+  }
+
   runApp(
     DevicePreview(
-      enabled: true, // Toggle true/false to show phone frame
+      enabled: kIsWeb,
       builder: (context) => const DanJonesApp(),
     ),
   );
@@ -24,6 +31,8 @@ class DanJonesApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'DanJones',
+      locale: DevicePreview.locale(context),
+      builder: DevicePreview.appBuilder,
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         scaffoldBackgroundColor: const Color(0xFF151515),
@@ -36,7 +45,6 @@ class DanJonesApp extends StatelessWidget {
         ),
       ),
       home: const SplashScreen(),
-      builder: DevicePreview.appBuilder, // Needed for DevicePreview
     );
   }
 }

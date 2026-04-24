@@ -204,7 +204,7 @@ class _CryptoDashboardState extends State<CryptoDashboard> {
                   ImageProvider avatarImage = const AssetImage("assets/images/profile_picture.png");
                   final user = data?.user;
                   if (user != null && user.avatar != null && user.avatar!.isNotEmpty) {
-                    avatarImage = NetworkImage('https://api.danjones.ng${user.avatar}');
+                    avatarImage = NetworkImage('${ApiService.rootUrl}${user.avatar}');
                   }
                   return CircleAvatar(
                     radius: 22,

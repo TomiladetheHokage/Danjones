@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../models/crypto_asset.dart';
 import 'sparkline_chart.dart';
 import '../theme/app_theme.dart';
+import '../services/api_service.dart';
 
 /// Horizontal card for Top Movers / New sections - matches _moverCard design.
 class CryptoCard extends StatelessWidget {
@@ -117,30 +118,32 @@ class CryptoCard extends StatelessWidget {
   }
 
   Widget _buildCryptoImage(String imagePath) {
-    if (imagePath.startsWith('http')) {
-      return CachedNetworkImage(
-        imageUrl: imagePath,
+    final imageUrl = imagePath.startsWith('http') 
+        ? imagePath 
+        : '${ApiService.rootUrl}/${imagePath.startsWith('/') ? imagePath.substring(1) : imagePath}';
+
+    return CachedNetworkImage(
+      imageUrl: imageUrl,
+      width: 44,
+      height: 44,
+      fit: BoxFit.contain,
+      placeholder: (context, url) => Container(
         width: 44,
         height: 44,
-        fit: BoxFit.contain,
-        placeholder: (context, url) => Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.05),
-            shape: BoxShape.circle,
-          ),
-          child: const Center(
-            child: SizedBox(
-              width: 16,
-              height: 16,
-              child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFE4B53E)),
-            ),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.05),
+          shape: BoxShape.circle,
+        ),
+        child: const Center(
+          child: SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFE4B53E)),
           ),
         ),
-        errorWidget: (context, url, error) => const Icon(Icons.token, color: Colors.white24, size: 44),
-      );
-    }
+      ),
+      errorWidget: (context, url, error) => const Icon(Icons.token, color: Colors.white24, size: 44),
+    );
 
     if (imagePath.endsWith('.svg')) {
       return SvgPicture.asset(

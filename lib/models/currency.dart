@@ -1,3 +1,5 @@
+import '../services/api_service.dart';
+
 class Currency {
   final int id;
   final String name;
@@ -33,8 +35,7 @@ class Currency {
   String get fullImageUrl {
     if (imagePath.startsWith('http')) return imagePath;
     final cleanPath = imagePath.startsWith('/') ? imagePath.substring(1) : imagePath;
-    // Added a timestamp cache-buster to bypass any cached CORS errors in the browser
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
-    return 'http://localhost:3000/$cleanPath?t=$timestamp';
+    // Use the dynamic rootUrl which handles the local proxy during development
+    return '${ApiService.rootUrl}/$cleanPath';
   }
 }

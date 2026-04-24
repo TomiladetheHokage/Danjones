@@ -3,7 +3,6 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../widgets/custom_text_field.dart';
 import '../../services/api_service.dart';
 import 'login_screen.dart';
-import 'security_verification_screen.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -129,8 +128,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   child: ElevatedButton(
                     onPressed: () {
                       Navigator.of(context).pop(); // Close dialog
-                      Navigator.of(context).push(
-                        MaterialPageRoute(builder: (context) => SecurityVerificationScreen(email: _emailController.text.trim())),
+                      Navigator.of(context).pushAndRemoveUntil(
+                        MaterialPageRoute(builder: (context) => const LoginScreen()),
+                        (route) => false,
                       );
                     },
                     style: ElevatedButton.styleFrom(

@@ -3,6 +3,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../models/crypto_asset.dart';
 import 'sparkline_chart.dart';
 import '../theme/app_theme.dart';
+import '../services/api_service.dart';
 
 class TokenListItem extends StatelessWidget {
   final CryptoAsset asset;
@@ -78,9 +79,13 @@ class TokenListItem extends StatelessWidget {
   }
 
   Widget _buildTokenImage(String? imagePath, String symbol) {
-    if (imagePath != null && imagePath.startsWith('http')) {
+    if (imagePath != null) {
+      final imageUrl = imagePath.startsWith('http') 
+          ? imagePath 
+          : '${ApiService.rootUrl}/${imagePath.startsWith('/') ? imagePath.substring(1) : imagePath}';
+          
       return CachedNetworkImage(
-        imageUrl: imagePath,
+        imageUrl: imageUrl,
         width: 32,
         height: 32,
         fit: BoxFit.contain,
@@ -99,7 +104,14 @@ class TokenListItem extends StatelessWidget {
             ),
           ),
         ),
-        errorWidget: (context, url, error) => const Icon(Icons.token, color: Colors.white24, size: 32),
+        errorWidget: (context, url, error) {
+          return Image.asset(
+            'assets/icons/${symbol.toUpperCase()}.png',
+            width: 32,
+            height: 32,
+            errorBuilder: (context, error, stackTrace) => const Icon(Icons.token, color: Colors.white24, size: 32),
+          );
+        },
       );
     }
 

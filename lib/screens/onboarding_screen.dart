@@ -274,7 +274,7 @@ Widget _buildMockup(int index) {
         } else {
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(
-              builder: (context) => MainShell(),
+              builder: (context) => const LoginScreen(),
             ),
           );
         }

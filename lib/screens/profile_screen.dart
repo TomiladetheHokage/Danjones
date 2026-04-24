@@ -67,7 +67,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                   if (snapshot.hasData) {
                     if (snapshot.data!.avatar != null && snapshot.data!.avatar!.isNotEmpty) {
-                      avatarImage = NetworkImage('https://api.danjones.ng${snapshot.data!.avatar}');
+                      avatarImage = NetworkImage('${ApiService.rootUrl}${snapshot.data!.avatar}');
                     }
                     email = snapshot.data!.email;
                     uid = snapshot.data!.id.toString();
