@@ -9,8 +9,14 @@ import '../models/user_profile.dart';
 import '../models/currency.dart';
 import '../models/dashboard_data.dart';
 import '../models/wallet.dart';
+import '../models/p2p_ad.dart';
+import '../models/p2p_trade.dart';
 
 class ApiService {
+  // Flutterwave Config
+  static const String flutterwavePublicKey = 'FLWPUBK_TEST-3b5ec17c93e55e610961fa3b4295dec2-X';
+  static const String flutterwaveBaseUrl = 'https://api.flutterwave.com/v3';
+
   // Production API Base URL
   static const String liveRoot = 'https://api.danjones.ng';
   static const String liveUrl = '$liveRoot/api';
@@ -35,10 +41,16 @@ class ApiService {
 
   static const _storage = FlutterSecureStorage();
   
+  
   static String? authToken;
 
   static Future<void> initToken() async {
     authToken = await _storage.read(key: 'auth_token');
+  }
+
+  static Future<void> logout() async {
+    authToken = null;
+    await _storage.delete(key: 'auth_token');
   }
 
   /// Helper for detailed error handling as requested
@@ -51,16 +63,19 @@ class ApiService {
       return response;
     } on SocketException catch (e) {
       debugPrint('API SOCKET ERROR [$requestName]: $e');
-      throw Exception('Connection failed. Please check your internet or server status.');
+      throw Exception('No internet connection. Please check your network and try again.');
     } on TimeoutException catch (e) {
       debugPrint('API TIMEOUT [$requestName]: $e');
-      throw Exception('Request timed out. Please try again.');
+      throw Exception('Request timed out. Please check your connection and try again.');
     } catch (e) {
       debugPrint('API UNEXPECTED ERROR [$requestName]: $e');
-      // On web, CORS or connection errors often manifest as generic exceptions including the URI.
-      // We catch them here and provide a cleaner message for the user.
+      // Web connection/CORS errors surface as generic exceptions — keep the
+      // dev-facing detail in debug mode only; show a friendly message in production.
       if (e.toString().contains('Failed to fetch') || e.toString().contains('XMLHttpRequest')) {
-        throw Exception('Server unreachable. Please ensure the backend is running and CORS is enabled.');
+        if (kDebugMode) {
+          throw Exception('Server unreachable. Please ensure the backend is running and CORS is enabled.');
+        }
+        throw Exception('No internet connection. Please check your network and try again.');
       }
       throw Exception('Something went wrong. Please try again later.');
     }
@@ -73,6 +88,10 @@ class ApiService {
     required String phone,
     String? refCode,
   }) async {
+    // Avoid carrying over a stale token from a previous session.
+    authToken = null;
+    await _storage.delete(key: 'auth_token');
+
     final response = await _makeRequest(
       () async {
         var request = http.MultipartRequest('POST', Uri.parse('$baseUrl/register'))
@@ -94,12 +113,15 @@ class ApiService {
 
     final data = jsonDecode(response.body);
     if (response.statusCode >= 200 && response.statusCode < 300) {
-      if (data['success'] == true) {
-        final token = data['token'];
-        if (token != null) {
-          authToken = token;
-          await _storage.write(key: 'auth_token', value: token);
+      final success = data['success'] == true || data['success'] == 'true' || !data.containsKey('success');
+      if (success) {
+        final token = (data['token'] ?? data['access_token'])?.toString();
+        if (token == null || token.isEmpty) {
+          throw Exception('Authentication token missing in register response.');
         }
+
+        authToken = token;
+        await _storage.write(key: 'auth_token', value: token);
         return data;
       } else {
         throw Exception(data['message'] ?? 'Failed to register');
@@ -114,6 +136,10 @@ class ApiService {
     required String email,
     required String password,
   }) async {
+    // Always reset previous auth before a new login attempt.
+    authToken = null;
+    await _storage.delete(key: 'auth_token');
+
     final response = await _makeRequest(
       () async {
         var request = http.MultipartRequest('POST', Uri.parse('$baseUrl/login'))
@@ -129,12 +155,15 @@ class ApiService {
 
     final data = jsonDecode(response.body);
     if (response.statusCode >= 200 && response.statusCode < 300) {
-      if (data['success'] == true) {
-        final token = data['token'];
-        if (token != null) {
-          authToken = token;
-          await _storage.write(key: 'auth_token', value: token);
+      final success = data['success'] == true || data['success'] == 'true' || !data.containsKey('success');
+      if (success) {
+        final token = (data['token'] ?? data['access_token'])?.toString();
+        if (token == null || token.isEmpty) {
+          throw Exception('Authentication token missing in login response.');
         }
+
+        authToken = token;
+        await _storage.write(key: 'auth_token', value: token);
         return data;
       } else {
         throw Exception(data['message'] ?? 'Failed to login');
@@ -247,6 +276,247 @@ class ApiService {
       return data;
     } else {
       String errMsg = data['message'] ?? data['error'] ?? 'Server error (${response.statusCode})';
+      throw Exception(errMsg);
+    }
+  }
+
+  static Future<List<P2PAd>> getP2pAds() async {
+    final response = await _makeRequest(
+      () => http.get(
+        Uri.parse('$baseUrl/p2p/ads'),
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $authToken',
+        },
+      ),
+      requestName: 'GET_P2P_ADS',
+    );
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      final data = jsonDecode(response.body);
+      final List<dynamic> adsJson = data['ads'] ?? [];
+      return adsJson.map((json) => P2PAd.fromJson(json)).toList();
+    } else {
+      throw Exception('Failed to load P2P ads (${response.statusCode})');
+    }
+  }
+
+  static Future<List<P2PTrade>> getMyP2pTrades() async {
+    final now = DateTime.now().millisecondsSinceEpoch.toString();
+    final primaryUri = Uri.parse('$baseUrl/p2p/my-trades').replace(
+      queryParameters: {'t': now},
+    );
+
+    Future<http.Response> fetch(Uri uri) {
+      return http.get(
+        uri,
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $authToken',
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache',
+        },
+      );
+    }
+
+    http.Response response;
+    try {
+      response = await _makeRequest(
+        () => fetch(primaryUri),
+        requestName: 'GET_MY_P2P_TRADES',
+      );
+    } catch (_) {
+      // Web debug often uses a local proxy that may not always be running.
+      // If that fails, retry directly against live API.
+      if (baseUrl == liveUrl) rethrow;
+
+      final fallbackUri = Uri.parse('$liveUrl/p2p/my-trades').replace(
+        queryParameters: {'t': now},
+      );
+      response = await _makeRequest(
+        () => fetch(fallbackUri),
+        requestName: 'GET_MY_P2P_TRADES_FALLBACK',
+      );
+    }
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      final tradesJson = data['trades'] as List<dynamic>? ?? [];
+      return tradesJson
+          .whereType<Map<String, dynamic>>()
+          .map(P2PTrade.fromJson)
+          .toList();
+    } else {
+      throw Exception('Failed to load trades (${response.statusCode})');
+    }
+  }
+
+  static Future<Map<String, dynamic>> initiateP2pTrade({
+    required int advertisementId,
+    required double amount,
+  }) async {
+    final response = await _makeRequest(
+      () => http.post(
+        Uri.parse('$baseUrl/p2p/initiate-trade'),
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $authToken',
+        },
+        body: jsonEncode({
+          'advertisement_id': advertisementId,
+          'amount': amount,
+        }),
+      ),
+      requestName: 'INITIATE_P2P_TRADE',
+    );
+
+    final data = jsonDecode(response.body);
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return data;
+    } else {
+      final errMsg = data['message'] ?? data['error'] ?? 'Server error (${response.statusCode})';
+      throw Exception(errMsg);
+    }
+  }
+
+  static Future<Map<String, dynamic>> markP2pTradePaid({
+    required int tradeId,
+  }) async {
+    final response = await _makeRequest(
+      () => http.post(
+        Uri.parse('$baseUrl/p2p/trades/$tradeId/pay'),
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $authToken',
+        },
+      ),
+      requestName: 'MARK_P2P_TRADE_PAID',
+    );
+
+    final data = jsonDecode(response.body);
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return data;
+    } else {
+      final errMsg = data['message'] ?? data['error'] ?? 'Server error (${response.statusCode})';
+      throw Exception(errMsg);
+    }
+  }
+
+  static Future<Map<String, dynamic>> cancelP2pTrade({
+    required int tradeId,
+  }) async {
+    final response = await _makeRequest(
+      () => http.post(
+        Uri.parse('$baseUrl/p2p/trades/$tradeId/cancel'),
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $authToken',
+        },
+      ),
+      requestName: 'CANCEL_P2P_TRADE',
+    );
+
+    final data = jsonDecode(response.body);
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return data;
+    } else {
+      final errMsg = data['message'] ?? data['error'] ?? 'Server error (${response.statusCode})';
+      throw Exception(errMsg);
+    }
+  }
+
+  static Future<Map<String, dynamic>> closeP2pAd({
+    required int adId,
+  }) async {
+    final response = await _makeRequest(
+      () => http.post(
+        Uri.parse('$baseUrl/p2p/close-ads/$adId'),
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $authToken',
+        },
+      ),
+      requestName: 'CLOSE_P2P_AD',
+    );
+
+    final data = jsonDecode(response.body);
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return data;
+    } else {
+      final errMsg = data['message'] ?? data['error'] ?? 'Server error (${response.statusCode})';
+      throw Exception(errMsg);
+    }
+  }
+
+  // ==========================================
+  // FLUTTERWAVE DEPOSIT
+  // ==========================================
+
+  /// Create a virtual account for deposit
+  /// NOTE: This endpoint typically requires a Secret Key. If public key fails, use Secret Key.
+  static Future<Map<String, dynamic>> initiateFlutterwaveDeposit({
+    required String email,
+    required double amount,
+    required String txRef,
+  }) async {
+    final response = await _makeRequest(
+      () => http.post(
+        Uri.parse('$flutterwaveBaseUrl/virtual-account-numbers'),
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $flutterwavePublicKey',
+        },
+        body: jsonEncode({
+          "email": email,
+          "is_permanent": false,
+          "amount": amount,
+          "tx_ref": txRef,
+          "narration": "Wallet deposit",
+          "frequency": 1
+        }),
+      ),
+      requestName: 'FLW_INITIATE_DEPOSIT',
+    );
+
+    final data = jsonDecode(response.body);
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      if (data['status'] == 'success') {
+        return data;
+      } else {
+        throw Exception(data['message'] ?? 'Failed to initiate deposit');
+      }
+    } else {
+      String errMsg = data['message'] ?? 'Flutterwave error (${response.statusCode})';
+      throw Exception(errMsg);
+    }
+  }
+
+  /// Verify deposit on our backend
+  static Future<Map<String, dynamic>> verifyFlutterwaveDeposit({
+    required String reference,
+  }) async {
+    final response = await _makeRequest(
+      () => http.post(
+        Uri.parse('$baseUrl/wallets/deposit/flutterwave/verify'),
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $authToken',
+        },
+        body: jsonEncode({
+          "reference": reference,
+        }),
+      ),
+      requestName: 'FLW_VERIFY_DEPOSIT',
+    );
+
+    final data = jsonDecode(response.body);
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return data;
+    } else {
+      String errMsg = data['message'] ?? data['error'] ?? 'Verification failed (${response.statusCode})';
       throw Exception(errMsg);
     }
   }

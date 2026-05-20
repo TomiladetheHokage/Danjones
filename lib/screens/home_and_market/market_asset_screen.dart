@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import '../../widgets/interactive_chart/interactive_chart.dart';
+
+import '../../models/crypto_asset.dart';
+import '../../models/wallet.dart';
+import '../../services/crypto_service.dart';
+import '../../services/data_store.dart';
+import '../../theme/app_theme.dart';
 import '../../widgets/interactive_chart/candle_data.dart';
 import '../../widgets/interactive_chart/chart_style.dart';
-import '../../models/crypto_asset.dart';
-import '../../theme/app_theme.dart';
-import 'dart:math' as math;
+import '../../widgets/interactive_chart/interactive_chart.dart';
 
 class MarketAssetScreen extends StatefulWidget {
   final CryptoAsset asset;
@@ -16,8 +19,168 @@ class MarketAssetScreen extends StatefulWidget {
 }
 
 class _MarketAssetScreenState extends State<MarketAssetScreen> {
+  // ── Timeframe config ──────────────────────────────────────────────────────
+  static const List<String> _timeframes = ['1m', '5m', '15m', '1h', '1d'];
+
+  /// Maps each UI timeframe label to the CoinGecko `days` parameter.
+  /// CoinGecko OHLC granularity: days=1 → 30-min, days=7/30 → 4-hour candles.
+  static const Map<String, int> _tfToDays = {
+    '1m': 1,
+    '5m': 1,
+    '15m': 1,
+    '1h': 7,
+    '1d': 30,
+  };
+
   String _selectedTimeframe = '1h';
 
+  // ── Chart state ───────────────────────────────────────────────────────────
+  List<CandleData>? _candles;
+  bool _chartLoading = false;
+  String? _chartError;
+
+  // ── Market info state ─────────────────────────────────────────────────────
+  double _marketCap = 0;
+  double _circulatingSupply = 0;
+  double _maxSupply = 0;
+  double _livePrice = 0;
+  double _livePriceChange = 0;
+  bool _infoLoading = false;
+
+  // ── Wallet balance ────────────────────────────────────────────────────────
+  Wallet? _wallet;
+
+  // ── Lifecycle ─────────────────────────────────────────────────────────────
+  @override
+  void initState() {
+    super.initState();
+    // Seed from the passed asset so the screen isn't blank while loading
+    _marketCap = widget.asset.marketCap;
+    _circulatingSupply = widget.asset.circulatingSupply;
+    _maxSupply = widget.asset.maxSupply;
+    _livePrice = widget.asset.price;
+    _livePriceChange = widget.asset.priceChangePercent;
+
+    _resolveWallet();
+    _loadChart();
+    _loadMarketDetail();
+  }
+
+  // ── Balance ───────────────────────────────────────────────────────────────
+  void _resolveWallet() {
+    final wallets = DataStore.instance.dashboard.value?.wallets ?? [];
+    final match = wallets.cast<Wallet?>().firstWhere(
+      (w) =>
+          w!.currency.symbol.toLowerCase() ==
+          widget.asset.symbol.toLowerCase(),
+      orElse: () => null,
+    );
+    setState(() => _wallet = match);
+  }
+
+  String get _balanceCrypto {
+    if (_wallet == null) return '0.00 ${widget.asset.symbol.toUpperCase()}';
+    return '${_wallet!.balance} ${widget.asset.symbol.toUpperCase()}';
+  }
+
+  String get _balanceUsd {
+    if (_wallet == null) return '\$0.00';
+    return '\$${_wallet!.balanceUsd.toDouble().toStringAsFixed(2)}';
+  }
+
+  // ── Chart loading ─────────────────────────────────────────────────────────
+  Future<void> _loadChart() async {
+    if (_chartLoading) return;
+    setState(() {
+      _chartLoading = true;
+      _chartError = null;
+    });
+
+    try {
+      final days = _tfToDays[_selectedTimeframe] ?? 7;
+      final candles = await CryptoService.fetchOhlcCandles(
+        symbol: widget.asset.symbol,
+        days: days,
+      );
+      if (!mounted) return;
+      setState(() => _candles = candles);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() =>
+          _chartError = e.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => _chartLoading = false);
+    }
+  }
+
+  // ── Market detail loading ─────────────────────────────────────────────────
+  Future<void> _loadMarketDetail() async {
+    setState(() => _infoLoading = true);
+    try {
+      final detail = await CryptoService.fetchCoinMarketDetail(
+        symbol: widget.asset.symbol,
+      );
+      if (!mounted) return;
+      setState(() {
+        _marketCap = detail['market_cap'] ?? _marketCap;
+        _circulatingSupply =
+            detail['circulating_supply'] ?? _circulatingSupply;
+        _maxSupply = detail['max_supply'] ?? _maxSupply;
+        _livePrice = detail['current_price'] ?? _livePrice;
+        _livePriceChange = detail['price_change_24h'] ?? _livePriceChange;
+      });
+    } catch (_) {
+      // Silently fall back to values seeded from the asset
+    } finally {
+      if (mounted) setState(() => _infoLoading = false);
+    }
+  }
+
+  // ── Timeframe tap ─────────────────────────────────────────────────────────
+  void _onTimeframeTap(String tf) {
+    if (tf == _selectedTimeframe) return;
+    setState(() {
+      _selectedTimeframe = tf;
+      _candles = null;
+    });
+    _loadChart();
+  }
+
+  // ── Formatting helpers ────────────────────────────────────────────────────
+  bool get _isPositive => _livePriceChange >= 0;
+
+  String get _formattedPrice {
+    final s = _livePrice.toStringAsFixed(2);
+    final parts = s.split('.');
+    final intPart = parts[0].replaceAllMapped(
+      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+      (m) => '${m[1]},',
+    );
+    return '\$$intPart.${parts[1]}';
+  }
+
+  String get _changeText =>
+      '${_isPositive ? '+' : ''}${_livePriceChange.toStringAsFixed(1)}%';
+
+  static String _compact(double value) {
+    if (value <= 0) return '--';
+    if (value >= 1e12) return '\$${(value / 1e12).toStringAsFixed(2)}T';
+    if (value >= 1e9) return '\$${(value / 1e9).toStringAsFixed(2)}B';
+    if (value >= 1e6) return '\$${(value / 1e6).toStringAsFixed(2)}M';
+    if (value >= 1e3) return '\$${(value / 1e3).toStringAsFixed(2)}K';
+    return value.toStringAsFixed(2);
+  }
+
+  static String _compactNoSign(double value) {
+    if (value <= 0) return '--';
+    if (value >= 1e12) return '${(value / 1e12).toStringAsFixed(2)}T';
+    if (value >= 1e9) return '${(value / 1e9).toStringAsFixed(2)}B';
+    if (value >= 1e6) return '${(value / 1e6).toStringAsFixed(2)}M';
+    if (value >= 1e3) return '${(value / 1e3).toStringAsFixed(2)}K';
+    return value.toStringAsFixed(2);
+  }
+
+  // ── Build ─────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -45,6 +208,7 @@ class _MarketAssetScreenState extends State<MarketAssetScreen> {
     );
   }
 
+  // ── Header ────────────────────────────────────────────────────────────────
   Widget _buildHeader() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
@@ -55,11 +219,7 @@ class _MarketAssetScreenState extends State<MarketAssetScreen> {
             alignment: Alignment.centerLeft,
             child: GestureDetector(
               onTap: () => Navigator.pop(context),
-              child: const Icon(
-                Icons.arrow_back,
-                color: Colors.white,
-                size: 24,
-              ),
+              child: const Icon(Icons.arrow_back, color: Colors.white, size: 24),
             ),
           ),
           Text(
@@ -75,6 +235,7 @@ class _MarketAssetScreenState extends State<MarketAssetScreen> {
     );
   }
 
+  // ── Price row ─────────────────────────────────────────────────────────────
   Widget _buildPriceHeaderRow() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
@@ -82,7 +243,7 @@ class _MarketAssetScreenState extends State<MarketAssetScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
-            widget.asset.formattedPrice,
+            _formattedPrice,
             style: const TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w500,
@@ -92,17 +253,19 @@ class _MarketAssetScreenState extends State<MarketAssetScreen> {
           Row(
             children: [
               Text(
-                widget.asset.changeText,
+                _changeText,
                 style: TextStyle(
                   fontSize: 14,
-                  color: widget.asset.isPositive ? const Color(0xFF52D377) : const Color(0xFFEF4444),
+                  color: _isPositive
+                      ? const Color(0xFF52D377)
+                      : const Color(0xFFEF4444),
                   fontWeight: FontWeight.w500,
                 ),
               ),
               const SizedBox(width: 12),
               Icon(
                 Icons.star_outline,
-                color: Colors.white.withOpacity(0.4),
+                color: Colors.white.withValues(alpha: 0.4),
                 size: 20,
               ),
             ],
@@ -112,88 +275,98 @@ class _MarketAssetScreenState extends State<MarketAssetScreen> {
     );
   }
 
+  // ── Chart section ─────────────────────────────────────────────────────────
   Widget _buildChartSection() {
-    final List<CandleData> chartData = List.generate(widget.asset.sparklineData.length, (index) {
-      double price = widget.asset.sparklineData[index];
-      double openPrice = index > 0 ? widget.asset.sparklineData[index - 1] : price;
-      
-      return CandleData(
-        timestamp: DateTime.now().subtract(Duration(hours: widget.asset.sparklineData.length - index)).millisecondsSinceEpoch,
-        open: openPrice,
-        close: price,
-        high: math.max(openPrice, price) * 1.001,
-        low: math.min(openPrice, price) * 0.999,
-        volume: 0,
-      );
-    });
-
     return Column(
       children: [
-        Container(
+        SizedBox(
           height: 250,
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: InteractiveChart(
-            candles: chartData.isNotEmpty ? chartData : [CandleData(timestamp: 0, open: 0, close: 0, high: 0, low: 0, volume: 0)],
-            initialVisibleCandleCount: 25,
-            timeLabel: (timestamp, visibleDataCount) => "",
-            style: ChartStyle(
-              timeLabelHeight: 0,
-              volumeHeightFactor: 0.0,
-              priceGridLineColor: Colors.white.withOpacity(0.04),
-              priceLabelStyle: TextStyle(
-                color: Colors.white.withOpacity(0.3),
-                fontSize: 10,
-              ),
-              timeLabelStyle: const TextStyle(
-                color: Colors.transparent,
-                fontSize: 0,
-              ),
-            ),
-          ),
+          child: _buildChartBody(),
         ),
         const SizedBox(height: 8),
-        _buildTimeAndTimeframeControls(),
+        _buildTimeframeControls(),
       ],
     );
   }
 
-  Widget _buildTimeAndTimeframeControls() {
-    final tfs = ['1m', '5m', '15m', '1h', '1d', 'More'];
-    final times = ['18:00', '19:00', '20:00', '21:00', '21:00', 'icon'];
+  Widget _buildChartBody() {
+    if (_chartLoading && (_candles == null || _candles!.isEmpty)) {
+      return const Center(
+        child: CircularProgressIndicator(
+          strokeWidth: 2,
+          color: Color(0xFFE4B53E),
+        ),
+      );
+    }
 
-    return Column(
-      children: [
-        Divider(color: Colors.white.withOpacity(0.04), height: 1),
-        const SizedBox(height: 12),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: times.map((time) {
-              return SizedBox(
-                width: 38,
-                child: Center(
-                  child: time == 'icon'
-                      ? Icon(
-                          Icons.crop_free,
-                          color: Colors.white.withOpacity(0.4),
-                          size: 16,
-                        )
-                      : Text(
-                          time,
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.4),
-                            fontSize: 10,
-                          ),
-                        ),
+    if (_chartError != null && (_candles == null || _candles!.isEmpty)) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.wifi_off_rounded, color: Colors.white24, size: 32),
+              const SizedBox(height: 8),
+              Text(
+                _chartError!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.white38, fontSize: 12),
+              ),
+              const SizedBox(height: 12),
+              GestureDetector(
+                onTap: _loadChart,
+                child: const Text(
+                  'Retry',
+                  style: TextStyle(
+                    color: Color(0xFFE4B53E),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-              );
-            }).toList(),
+              ),
+            ],
           ),
         ),
-        const SizedBox(height: 12),
-        Divider(color: Colors.white.withOpacity(0.04), height: 1),
+      );
+    }
+
+    final candles = _candles;
+    if (candles == null || candles.length < 3) {
+      return const Center(
+        child: Text('No chart data', style: TextStyle(color: Colors.white24)),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: InteractiveChart(
+        candles: candles,
+        initialVisibleCandleCount: 30,
+        timeLabel: (timestamp, visibleDataCount) => '',
+        style: ChartStyle(
+          timeLabelHeight: 0,
+          volumeHeightFactor: 0.0,
+          priceGridLineColor: Colors.white.withValues(alpha: 0.04),
+          priceLabelStyle: TextStyle(
+            color: Colors.white.withValues(alpha: 0.3),
+            fontSize: 10,
+          ),
+          timeLabelStyle: const TextStyle(
+            color: Colors.transparent,
+            fontSize: 0,
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── Timeframe buttons ─────────────────────────────────────────────────────
+  Widget _buildTimeframeControls() {
+    return Column(
+      children: [
+        Divider(color: Colors.white.withValues(alpha: 0.04), height: 1),
         const SizedBox(height: 8),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -201,39 +374,59 @@ class _MarketAssetScreenState extends State<MarketAssetScreen> {
             height: 40,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: tfs.map((tf) {
-                bool isSelected = _selectedTimeframe == tf;
-                return GestureDetector(
-                  onTap: () {
-                    if (tf != 'More') {
-                      setState(() => _selectedTimeframe = tf);
-                    }
-                  },
-                  child: Container(
-                    width: 38,
-                    height: 28,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? const Color(0xFF1E1F25)
-                          : Colors.transparent,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      tf,
-                      style: TextStyle(
-                        fontSize: 12,
+              children: [
+                ..._timeframes.map((tf) {
+                  final isSelected = _selectedTimeframe == tf;
+                  return GestureDetector(
+                    onTap: () => _onTimeframeTap(tf),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 150),
+                      width: 44,
+                      height: 28,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
                         color: isSelected
-                            ? Colors.white
-                            : Colors.white.withOpacity(0.4),
-                        fontWeight: isSelected
-                            ? FontWeight.w600
-                            : FontWeight.normal,
+                            ? const Color(0xFF1E1F25)
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        tf,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: isSelected
+                              ? Colors.white
+                              : Colors.white.withValues(alpha: 0.4),
+                          fontWeight: isSelected
+                              ? FontWeight.w600
+                              : FontWeight.normal,
+                        ),
                       ),
                     ),
+                  );
+                }),
+                // Spinner while fetching, icon otherwise
+                SizedBox(
+                  width: 44,
+                  height: 28,
+                  child: Center(
+                    child: _chartLoading
+                        ? const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 1.5,
+                              color: Color(0xFFE4B53E),
+                            ),
+                          )
+                        : Icon(
+                            Icons.crop_free,
+                            color: Colors.white.withValues(alpha: 0.4),
+                            size: 16,
+                          ),
                   ),
-                );
-              }).toList(),
+                ),
+              ],
             ),
           ),
         ),
@@ -241,17 +434,17 @@ class _MarketAssetScreenState extends State<MarketAssetScreen> {
     );
   }
 
+  // ── Holding / balance section ─────────────────────────────────────────────
   Widget _buildHoldingSection() {
-    const Color fafaColor = Color(0xFFFAFAFA);
+    const fafaColor = Color(0xFFFAFAFA);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 2. AVAILABLE BALANCE HEADER
           const Text(
-            "Available Balance",
+            'Available Balance',
             style: TextStyle(
               color: fafaColor,
               fontSize: 13,
@@ -259,55 +452,56 @@ class _MarketAssetScreenState extends State<MarketAssetScreen> {
             ),
           ),
           const SizedBox(height: 8),
-
-          // MAIN AMOUNT TEXT
-          const Text(
-            "0.19873 BTC",
-            style: TextStyle(
+          Text(
+            _balanceCrypto,
+            style: const TextStyle(
               color: Colors.white,
               fontSize: 28,
               fontWeight: FontWeight.bold,
               letterSpacing: -0.5,
             ),
           ),
+          const SizedBox(height: 4),
+          Text(
+            _balanceUsd,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.45),
+              fontSize: 14,
+            ),
+          ),
           const SizedBox(height: 24),
-
-          // 3. THE MAIN ROW (Icon, Name, Fiat Value)
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // LEFT SIDE: Image Icon
               _buildAssetIcon(widget.asset.imagePath, widget.asset.symbol),
               const SizedBox(width: 14),
-              // SYMBOL AND SUBTITLE
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    widget.asset.symbol,
+                    widget.asset.symbol.toUpperCase(),
                     style: const TextStyle(
                       color: fafaColor,
-                      fontSize: 18, // Slightly larger
+                      fontSize: 18,
                       fontWeight: FontWeight.w400,
                     ),
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    widget.asset.name, // Subtitle e.g. "Bitcoin"
+                    widget.asset.name,
                     style: TextStyle(
-                      color: fafaColor.withOpacity(0.6),
-                      fontSize: 14, // Slightly larger
+                      color: fafaColor.withValues(alpha: 0.6),
+                      fontSize: 14,
                     ),
                   ),
                 ],
               ),
               const Spacer(),
-              // RIGHT SIDE: Fiat Amount and Change
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    widget.asset.formattedPrice,
+                    _formattedPrice,
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 16,
@@ -316,9 +510,11 @@ class _MarketAssetScreenState extends State<MarketAssetScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    "(${widget.asset.changeText})",
+                    '($_changeText)',
                     style: TextStyle(
-                      color: widget.asset.isPositive ? const Color(0xFF52D377) : const Color(0xFFEF4444),
+                      color: _isPositive
+                          ? const Color(0xFF52D377)
+                          : const Color(0xFFEF4444),
                       fontSize: 13,
                       fontWeight: FontWeight.w500,
                     ),
@@ -332,27 +528,55 @@ class _MarketAssetScreenState extends State<MarketAssetScreen> {
     );
   }
 
-  // 4. THE INFO SECTION (Labels in #FAFAFA)
+  // ── Info section ──────────────────────────────────────────────────────────
   Widget _buildInfoSection() {
-    const Color fafaColor = Color(0xFFFAFAFA);
+    const fafaColor = Color(0xFFFAFAFA);
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SizedBox(height: 16),
-          const Text(
-            "Info",
-            style: TextStyle(
-              color: fafaColor,
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-            ),
+          Row(
+            children: [
+              const Text(
+                'Info',
+                style: TextStyle(
+                  color: fafaColor,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              if (_infoLoading) ...[
+                const SizedBox(width: 8),
+                const SizedBox(
+                  width: 12,
+                  height: 12,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 1.5,
+                    color: Color(0xFFE4B53E),
+                  ),
+                ),
+              ],
+            ],
           ),
           const SizedBox(height: 16),
-          _infoRow("Market Cap", widget.asset.marketCap > 0 ? widget.asset.formattedMarketCap : '--', fafaColor),
-          _infoRow("Circulating Supply", widget.asset.circulatingSupply > 0 ? widget.asset.formattedCirculatingSupply : '--', fafaColor),
-          _infoRow("Max Supply", widget.asset.formattedMaxSupply, fafaColor),
+          _infoRow('Market Cap', _compact(_marketCap), fafaColor),
+          _infoRow(
+            'Circulating Supply',
+            _circulatingSupply > 0
+                ? '${_compactNoSign(_circulatingSupply)} ${widget.asset.symbol.toUpperCase()}'
+                : '--',
+            fafaColor,
+          ),
+          _infoRow(
+            'Max Supply',
+            _maxSupply > 0
+                ? '${_compactNoSign(_maxSupply)} ${widget.asset.symbol.toUpperCase()}'
+                : '∞',
+            fafaColor,
+          ),
         ],
       ),
     );
@@ -385,40 +609,7 @@ class _MarketAssetScreenState extends State<MarketAssetScreen> {
     );
   }
 
-  Widget _buildAssetIcon(String? imagePath, String symbol) {
-    if (imagePath != null && imagePath.startsWith('http')) {
-      return CachedNetworkImage(
-        imageUrl: imagePath,
-        width: 44,
-        height: 44,
-        fit: BoxFit.contain,
-        placeholder: (context, url) => Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.05),
-            shape: BoxShape.circle,
-          ),
-          child: const Center(
-            child: SizedBox(
-              width: 16,
-              height: 16,
-              child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFE4B53E)),
-            ),
-          ),
-        ),
-        errorWidget: (context, url, error) => const Icon(Icons.monetization_on, color: Colors.white24, size: 44),
-      );
-    }
-    return Image.asset(
-      'assets/icons/${symbol.toUpperCase()}.png',
-      width: 44,
-      height: 44,
-      errorBuilder: (context, error, stackTrace) =>
-          const Icon(Icons.monetization_on, color: Colors.white24, size: 44),
-    );
-  }
-
+  // ── Trade button ──────────────────────────────────────────────────────────
   Widget _buildTradeButton() {
     return Padding(
       padding: const EdgeInsets.all(20),
@@ -430,7 +621,7 @@ class _MarketAssetScreenState extends State<MarketAssetScreen> {
         ),
         child: const Center(
           child: Text(
-            "Trade",
+            'Trade',
             style: TextStyle(
               color: Colors.black,
               fontWeight: FontWeight.bold,
@@ -439,6 +630,45 @@ class _MarketAssetScreenState extends State<MarketAssetScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  // ── Asset icon ────────────────────────────────────────────────────────────
+  Widget _buildAssetIcon(String? imagePath, String symbol) {
+    if (imagePath != null && imagePath.startsWith('http')) {
+      return CachedNetworkImage(
+        imageUrl: imagePath,
+        width: 44,
+        height: 44,
+        fit: BoxFit.contain,
+        placeholder: (context, url) => Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.05),
+            shape: BoxShape.circle,
+          ),
+          child: const Center(
+            child: SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Color(0xFFE4B53E),
+              ),
+            ),
+          ),
+        ),
+        errorWidget: (context, url, error) =>
+            const Icon(Icons.monetization_on, color: Colors.white24, size: 44),
+      );
+    }
+    return Image.asset(
+      'assets/icons/${symbol.toUpperCase()}.png',
+      width: 44,
+      height: 44,
+      errorBuilder: (context, error, stackTrace) =>
+          const Icon(Icons.monetization_on, color: Colors.white24, size: 44),
     );
   }
 }

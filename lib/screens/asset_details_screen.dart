@@ -7,6 +7,7 @@ import '../services/crypto_service.dart';
 import '../models/crypto_asset.dart';
 import 'deposit_screen.dart';
 import 'main_shell.dart';
+import 'home_and_market/market_asset_screen.dart';
 
 class AssetDetailsScreen extends StatefulWidget {
   final Wallet wallet;
@@ -136,24 +137,51 @@ class _AssetDetailsScreenState extends State<AssetDetailsScreen> {
   }
 
   Widget _buildActionButtons() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        _buildActionButton('assets/icons/deposit.png', 'Deposit', onTap: () {
+  return Row(
+    mainAxisAlignment: MainAxisAlignment.center,
+    children: [
+      _buildActionButton(
+        'assets/icons/deposit.png',
+        'Deposit',
+        onTap: () {
           Navigator.of(context, rootNavigator: true).push(
-            MaterialPageRoute(builder: (context) => const DepositScreen()),
+            MaterialPageRoute(
+              builder: (context) => const DepositScreen(),
+            ),
           );
-        }),
-        const SizedBox(width: 24),
-        _buildActionButton('assets/icons/buy.png', 'Buy'),
-        const SizedBox(width: 24),
-        _buildActionButton('assets/icons/swap.png', 'Swap', onTap: () {
+        },
+      ),
+
+      const SizedBox(width: 24),
+
+      _buildActionButton(
+        'assets/icons/withdraw.png',
+        'Withdraw',
+        onTap: () {
+          // Withdraw action here
+        },
+      ),
+
+      const SizedBox(width: 24),
+
+      _buildActionButton(
+        'assets/icons/buy.png',
+        'Buy',
+      ),
+
+      const SizedBox(width: 24),
+
+      _buildActionButton(
+        'assets/icons/swap.png',
+        'Swap',
+        onTap: () {
           Navigator.of(context, rootNavigator: true).pop();
           mainShellKey.currentState?.setTab(2);
-        }),
-      ],
-    );
-  }
+        },
+      ),
+    ],
+  );
+}
 
   Widget _buildActionButton(String iconPath, String label, {VoidCallback? onTap}) {
     return GestureDetector(
@@ -342,10 +370,27 @@ class _AssetDetailsScreenState extends State<AssetDetailsScreen> {
             foregroundColor: Colors.black,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           ),
-          onPressed: () => Navigator.pushNamed(context, '/market'),
+          onPressed: _goToMarket,
           child: Text('Go to market', style: AppTheme.inter(fontWeight: FontWeight.bold, color: Colors.black)),
         ),
       ),
+    );
+  }
+
+  void _goToMarket() {
+    // Use live data if already fetched, otherwise build a minimal asset from wallet info
+    final asset = _liveMarketData ?? CryptoAsset(
+      symbol: widget.wallet.currency.symbol,
+      name: widget.wallet.currency.name,
+      price: widget.wallet.balanceUsd.toDouble(),
+      priceChangePercent: 0.0,
+      sparklineData: const [0.0, 0.0, 0.0],
+      imagePath: widget.wallet.currency.fullImageUrl,
+    );
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => MarketAssetScreen(asset: asset)),
     );
   }
 }

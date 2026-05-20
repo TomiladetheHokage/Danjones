@@ -1,54 +1,325 @@
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
+
+import '../../services/api_service.dart';
+import '../../widgets/custom_dialog.dart';
 import 'login_screen.dart';
 
+/// Two-state email verification screen.
+///
+/// STATE 1 — Initial: shows email + "Send verification code" button.
+/// STATE 2 — Code sent: shows OTP input, countdown timer, and "Verify Email" button.
 class SecurityVerificationScreen extends StatefulWidget {
   final String email;
+
   const SecurityVerificationScreen({super.key, required this.email});
 
   @override
-  State<SecurityVerificationScreen> createState() => _SecurityVerificationScreenState();
+  State<SecurityVerificationScreen> createState() =>
+      _SecurityVerificationScreenState();
 }
 
-class _SecurityVerificationScreenState extends State<SecurityVerificationScreen> {
-  // Simulating 6 OTP digits
+class _SecurityVerificationScreenState
+    extends State<SecurityVerificationScreen> {
+  // ── UI state ──────────────────────────────────────────────────────────────
+  bool _codeSent = false;
+  bool _isSending = false;
+  bool _isVerifying = false;
+  static const bool testMode = true;
+
+  // ── OTP input ─────────────────────────────────────────────────────────────
   final List<String> _otpDigits = List.filled(6, '');
+  final TextEditingController _hiddenController = TextEditingController();
   final FocusNode _focusNode = FocusNode();
-  final TextEditingController _controller = TextEditingController();
 
-  @override
-  void initState() {
-    super.initState();
-    // Auto-focus the hidden text field to bring up keyboard
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _focusNode.requestFocus();
-    });
-  }
+  // ── Timer ─────────────────────────────────────────────────────────────────
+  static const int _timerDuration = 60;
+  int _secondsRemaining = _timerDuration;
+  Timer? _countdownTimer;
 
+  bool get _timerActive => _secondsRemaining > 0;
+  bool get _otpComplete => _otpDigits.every((d) => d.isNotEmpty);
+
+  // ── Lifecycle ─────────────────────────────────────────────────────────────
   @override
   void dispose() {
+    _countdownTimer?.cancel();
+    _hiddenController.dispose();
     _focusNode.dispose();
-    _controller.dispose();
     super.dispose();
   }
 
-  void _onCodeChanged(String value) {
+  // ── Timer ─────────────────────────────────────────────────────────────────
+  void _startTimer() {
+    _countdownTimer?.cancel();
+    setState(() => _secondsRemaining = _timerDuration);
+
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      setState(() {
+        if (_secondsRemaining > 0) {
+          _secondsRemaining--;
+        } else {
+          timer.cancel();
+        }
+      });
+    });
+  }
+
+  String get _timerLabel {
+    final mins = (_secondsRemaining ~/ 60).toString().padLeft(2, '0');
+    final secs = (_secondsRemaining % 60).toString().padLeft(2, '0');
+    return '$mins:$secs';
+  }
+
+  // ── OTP input ─────────────────────────────────────────────────────────────
+  void _onOtpChanged(String value) {
     setState(() {
       for (int i = 0; i < 6; i++) {
-        if (i < value.length) {
-          _otpDigits[i] = value[i];
-        } else {
-          _otpDigits[i] = '';
-        }
+        _otpDigits[i] = i < value.length ? value[i] : '';
       }
     });
+    if (value.length == 6) _focusNode.unfocus();
+  }
 
-    if (value.length == 6) {
-      // Auto-submit or enable button
-      _focusNode.unfocus();
+  // ── API: Send / Resend OTP ────────────────────────────────────────────────
+  // Future<void> _sendOtp() async {
+  //   if (_isSending) return;
+  //   setState(() => _isSending = true);
+
+  //   try {
+  //     final response = await http
+  //         .post(
+  //           Uri.parse('${ApiService.baseUrl}/resend-otp'),
+  //           headers: {
+  //             'Accept': 'application/json',
+  //             'Authorization': 'Bearer ${ApiService.authToken}',
+  //           },
+  //         )
+  //         .timeout(const Duration(seconds: 15));
+
+  //     if (!mounted) return;
+
+  //     final data = _tryDecode(response.body);
+  //     final ok = response.statusCode >= 200 && response.statusCode < 300;
+
+  //     if (ok) {
+  //       setState(() => _codeSent = true);
+  //       _startTimer();
+  //       Future.delayed(const Duration(milliseconds: 300), () {
+  //         if (mounted) _focusNode.requestFocus();
+  //       });
+  //     } else {
+  //       _showError(data?['message'] ?? 'Failed to send code. Please try again.');
+  //     }
+  //   } on Exception catch (e) {
+  //     if (mounted) _showError(_friendlyError(e));
+  //   } finally {
+  //     if (mounted) setState(() => _isSending = false);
+  //   }
+  // }
+
+  // // ── API: Verify OTP ───────────────────────────────────────────────────────
+  // Future<void> _verifyOtp() async {
+  //   if (_isVerifying || !_otpComplete) return;
+  //   setState(() => _isVerifying = true);
+
+  //   try {
+  //     final request = http.MultipartRequest(
+  //       'POST',
+  //       Uri.parse('${ApiService.baseUrl}/verify-otp'),
+  //     )
+  //       ..headers['Accept'] = 'application/json'
+  //       ..headers['Authorization'] = 'Bearer ${ApiService.authToken}'
+  //       ..fields['otp'] = _otpDigits.join();
+
+  //     final streamed =
+  //         await request.send().timeout(const Duration(seconds: 15));
+  //     final response = await http.Response.fromStream(streamed);
+
+  //     if (!mounted) return;
+
+  //     final data = _tryDecode(response.body);
+  //     final ok = response.statusCode >= 200 && response.statusCode < 300;
+
+  //     if (ok) {
+  //       _countdownTimer?.cancel();
+  //       _showSuccessDialog();
+  //     } else {
+  //       _showError(
+  //           data?['message'] ?? 'Invalid or expired code. Please try again.');
+  //     }
+  //   } on Exception catch (e) {
+  //     if (mounted) _showError(_friendlyError(e));
+  //   } finally {
+  //     if (mounted) setState(() => _isVerifying = false);
+  //   }
+  // }
+
+  Future<void> _sendOtp() async {
+  if (_isSending) return;
+
+  setState(() => _isSending = true);
+
+  try {
+    if (!testMode) {
+      final response = await http
+          .post(
+            Uri.parse('${ApiService.baseUrl}/resend-otp'),
+            headers: {
+              'Accept': 'application/json',
+              'Authorization':
+                  'Bearer ${ApiService.authToken}',
+            },
+          )
+          .timeout(const Duration(seconds: 15));
+
+      if (!mounted) return;
+
+      final data = _tryDecode(response.body);
+
+      final ok =
+          response.statusCode >= 200 &&
+          response.statusCode < 300;
+
+      if (!ok) {
+        _showError(
+          data?['message'] ??
+              'Failed to send code. Please try again.',
+        );
+        return;
+      }
+    }
+
+    // TEST MODE SUCCESS
+    setState(() => _codeSent = true);
+
+    _startTimer();
+
+    Future.delayed(
+      const Duration(milliseconds: 300),
+      () {
+        if (mounted) {
+          _focusNode.requestFocus();
+        }
+      },
+    );
+  } on Exception catch (e) {
+    if (mounted) {
+      _showError(_friendlyError(e));
+    }
+  } finally {
+    if (mounted) {
+      setState(() => _isSending = false);
+    }
+  }
+}
+
+
+Future<void> _verifyOtp() async {
+  if (_isVerifying || !_otpComplete) return;
+
+  setState(() => _isVerifying = true);
+
+  try {
+    if (!testMode) {
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('${ApiService.baseUrl}/verify-otp'),
+      )
+        ..headers['Accept'] = 'application/json'
+        ..headers['Authorization'] =
+            'Bearer ${ApiService.authToken}'
+        ..fields['otp'] = _otpDigits.join();
+
+      final streamed =
+          await request.send().timeout(
+                const Duration(seconds: 15),
+              );
+
+      final response =
+          await http.Response.fromStream(streamed);
+
+      if (!mounted) return;
+
+      final data = _tryDecode(response.body);
+
+      final ok =
+          response.statusCode >= 200 &&
+          response.statusCode < 300;
+
+      if (!ok) {
+        _showError(
+          data?['message'] ??
+              'Invalid or expired code.',
+        );
+        return;
+      }
+    }
+
+    // TEST MODE SUCCESS
+    _countdownTimer?.cancel();
+
+    _showSuccessDialog();
+  } on Exception catch (e) {
+    if (mounted) {
+      _showError(_friendlyError(e));
+    }
+  } finally {
+    if (mounted) {
+      setState(() => _isVerifying = false);
+    }
+  }
+}
+
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+  Map<String, dynamic>? _tryDecode(String body) {
+    try {
+      return jsonDecode(body) as Map<String, dynamic>;
+    } catch (_) {
+      return null;
     }
   }
 
+  String _friendlyError(Exception e) {
+    final msg = e.toString();
+    if (msg.contains('timed out') || msg.contains('TimeoutException')) {
+      return 'Request timed out. Please try again.';
+    }
+    if (msg.contains('SocketException') || msg.contains('Failed to fetch')) {
+      return 'No internet connection. Please check your network.';
+    }
+    return 'Something went wrong. Please try again.';
+  }
+
+  void _showError(String message) {
+    CustomDialog.showError(context, title: 'Error', message: message);
+  }
+
+  void _showSuccessDialog() {
+    CustomDialog.showSuccess(
+      context,
+      title: 'Email Verified',
+      message: 'Your email has been verified successfully.',
+      buttonText: 'Continue to Login',
+      onButtonPressed: () {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+          (route) => false,
+        );
+      },
+    );
+  }
+
+  // ── Build ─────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -60,228 +331,229 @@ class _SecurityVerificationScreenState extends State<SecurityVerificationScreen>
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.help_outline, color: Colors.white70),
-            onPressed: () {},
-          ),
-        ],
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                const SizedBox(height: 16),
-                Text(
-                  'Security Verification',
-                  style: GoogleFonts.outfit(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                RichText(
-                  textAlign: TextAlign.center,
-                  text: TextSpan(
-                    style: GoogleFonts.outfit(color: Colors.white54, fontSize: 14),
-                    children: [
-                      const TextSpan(text: 'Enter the 6-digit code sent to '),
-                      TextSpan(
-                        text: widget.email,
-                        style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.bold),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 48),
-
-                // OTP Display Boxes
-                Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: List.generate(6, (index) {
-                        final isActive = _controller.text.length == index;
-                        final isFilled = _otpDigits[index].isNotEmpty;
-                        
-                        return Container(
-                          width: 45,
-                          height: 55,
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF1E1E1E),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: isActive 
-                                  ? const Color(0xFFE4B53E) 
-                                  : (isFilled ? Colors.white30 : Colors.white10),
-                              width: isActive ? 1.5 : 1,
-                            ),
-                          ),
-                          child: Text(
-                            _otpDigits[index].isEmpty ? (isActive ? '|' : '*') : _otpDigits[index],
-                            style: GoogleFonts.outfit(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: isActive ? const Color(0xFFE4B53E) : Colors.white,
-                            ),
-                          ),
-                        );
-                      }),
-                    ),
-                    Positioned.fill(
-                      child: Opacity(
-                        opacity: 0.001,
-                        child: TextField(
-                          controller: _controller,
-                          focusNode: _focusNode,
-                          keyboardType: TextInputType.number,
-                          maxLength: 6,
-                          showCursor: false,
-                          decoration: const InputDecoration(
-                            counterText: '',
-                            border: OutlineInputBorder(borderSide: BorderSide.none),
-                          ),
-                          onChanged: _onCodeChanged,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-
+          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const SizedBox(height: 24),
+              _buildHeader(),
+              const SizedBox(height: 48),
+              if (_codeSent) ...[
+                _buildOtpInput(),
                 const SizedBox(height: 32),
-                Text(
-                  "Didn't receive the code?",
-                  style: GoogleFonts.outfit(color: Colors.white30, fontSize: 12),
-                ),
-                const SizedBox(height: 8),
-                RichText(
-                  text: TextSpan(
-                    style: GoogleFonts.outfit(color: Colors.white54, fontSize: 12),
-                    children: [
-                      const TextSpan(text: 'Resend code in '),
-                      TextSpan(
-                        text: '00:59',
-                        style: GoogleFonts.outfit(color: const Color(0xFFE4B53E)),
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 48),
-
-                SizedBox(
-                  width: double.infinity,
-                  height: 56,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      _showSuccessDialog();
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFE4B53E),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30),
-                      ),
-                    ),
-                    child: Text(
-                      'Confirm',
-                      style: GoogleFonts.outfit(
-                        color: Colors.black,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
+                _buildResendRow(),
               ],
-            ),
+              const SizedBox(height: 48),
+              _buildActionButton(),
+              const SizedBox(height: 32),
+            ],
           ),
         ),
       ),
     );
   }
 
-  void _showSuccessDialog() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) {
-        return Dialog(
-          backgroundColor: const Color(0xFF1E1E1E),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 80,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE4B53E).withOpacity(0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.check_circle_rounded,
-                    color: Color(0xFFE4B53E),
-                    size: 48,
+  // ── Header ────────────────────────────────────────────────────────────────
+  Widget _buildHeader() {
+    return Column(
+      children: [
+        Container(
+          width: 72,
+          height: 72,
+          decoration: BoxDecoration(
+            color: const Color(0xFFE4B53E).withValues(alpha: 0.12),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(
+            Icons.mark_email_unread_outlined,
+            color: Color(0xFFE4B53E),
+            size: 36,
+          ),
+        ),
+        const SizedBox(height: 20),
+        Text(
+          'Email Verification',
+          style: GoogleFonts.outfit(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+        const SizedBox(height: 10),
+        RichText(
+          textAlign: TextAlign.center,
+          text: TextSpan(
+            style: GoogleFonts.outfit(
+                color: Colors.white54, fontSize: 14, height: 1.5),
+            children: [
+              TextSpan(
+                text: _codeSent
+                    ? 'Enter the 6-digit code sent to\n'
+                    : 'We will send a verification code to\n',
+              ),
+              TextSpan(
+                text: widget.email,
+                style: GoogleFonts.outfit(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ── OTP boxes ─────────────────────────────────────────────────────────────
+  Widget _buildOtpInput() {
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: List.generate(6, (i) {
+            final isActive = _hiddenController.text.length == i;
+            final isFilled = _otpDigits[i].isNotEmpty;
+
+            return GestureDetector(
+              onTap: () => _focusNode.requestFocus(),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                width: 46,
+                height: 56,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1E1E1E),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: isActive
+                        ? const Color(0xFFE4B53E)
+                        : isFilled
+                            ? Colors.white30
+                            : Colors.white10,
+                    width: isActive ? 1.5 : 1,
                   ),
                 ),
-                const SizedBox(height: 24),
-                Text(
-                  'Verification Successful',
+                child: Text(
+                  isFilled ? _otpDigits[i] : (isActive ? '|' : ''),
                   style: GoogleFonts.outfit(
-                    color: Colors.white,
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
+                    color:
+                        isActive ? const Color(0xFFE4B53E) : Colors.white,
                   ),
                 ),
-                const SizedBox(height: 12),
-                Text(
-                  'Your account has been verified successfully. You can now access all features.',
-                  textAlign: TextAlign.center,
+              ),
+            );
+          }),
+        ),
+        Positioned.fill(
+          child: Opacity(
+            opacity: 0.001,
+            child: TextField(
+              controller: _hiddenController,
+              focusNode: _focusNode,
+              keyboardType: TextInputType.number,
+              maxLength: 6,
+              showCursor: false,
+              decoration: const InputDecoration(
+                counterText: '',
+                border: OutlineInputBorder(borderSide: BorderSide.none),
+              ),
+              onChanged: _onOtpChanged,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ── Resend row ────────────────────────────────────────────────────────────
+  Widget _buildResendRow() {
+    return Column(
+      children: [
+        Text(
+          "Didn't receive the code?",
+          style: GoogleFonts.outfit(color: Colors.white38, fontSize: 13),
+        ),
+        const SizedBox(height: 8),
+        if (_timerActive)
+          RichText(
+            text: TextSpan(
+              style: GoogleFonts.outfit(color: Colors.white54, fontSize: 13),
+              children: [
+                const TextSpan(text: 'Resend code in '),
+                TextSpan(
+                  text: _timerLabel,
                   style: GoogleFonts.outfit(
-                    color: Colors.white54,
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(height: 32),
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.of(context).pushAndRemoveUntil(
-                          MaterialPageRoute(builder: (context) => const LoginScreen()),
-                          (route) => false,
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFE4B53E),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(25),
-                      ),
-                    ),
-                    child: Text(
-                      'Done',
-                      style: GoogleFonts.outfit(
-                        color: Colors.black,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                    color: const Color(0xFFE4B53E),
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ],
             ),
+          )
+        else
+          GestureDetector(
+            onTap: _isSending ? null : _sendOtp,
+            child: Text(
+              _isSending ? 'Sending…' : 'Resend code',
+              style: GoogleFonts.outfit(
+                color:
+                    _isSending ? Colors.white38 : const Color(0xFFE4B53E),
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                decoration: _isSending ? null : TextDecoration.underline,
+                decorationColor: const Color(0xFFE4B53E),
+              ),
+            ),
           ),
-        );
-      },
+      ],
+    );
+  }
+
+  // ── Primary action button ─────────────────────────────────────────────────
+  Widget _buildActionButton() {
+    final bool isLoading = _isSending || _isVerifying;
+    final bool enabled =
+        _codeSent ? (_otpComplete && !isLoading) : !isLoading;
+
+    return SizedBox(
+      width: double.infinity,
+      height: 56,
+      child: ElevatedButton(
+        onPressed: enabled ? (_codeSent ? _verifyOtp : _sendOtp) : null,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFFE4B53E),
+          disabledBackgroundColor:
+              const Color(0xFFE4B53E).withValues(alpha: 0.35),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(30),
+          ),
+        ),
+        child: isLoading
+            ? const SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  valueColor:
+                      AlwaysStoppedAnimation<Color>(Colors.black),
+                ),
+              )
+            : Text(
+                _codeSent ? 'Verify Email' : 'Send verification code',
+                style: GoogleFonts.outfit(
+                  color: Colors.black,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+      ),
     );
   }
 }

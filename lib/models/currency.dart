@@ -26,8 +26,8 @@ class Currency {
       symbol: json['symbol'] ?? '',
       imagePath: json['image'] ?? '',
       decimalPlaces: json['decimal_places'] ?? 2,
-      isCrypto: (json['is_crypto'] == 1 || json['is_crypto'] == true),
-      isActive: (json['is_active'] == 1 || json['is_active'] == true),
+      isCrypto: (json['is_crypto'] == 1 || json['is_crypto'] == true || json['is_crypto'] == '1'),
+      isActive: (json['is_active'] == 1 || json['is_active'] == true || json['is_active'] == '1'),
     );
   }
 

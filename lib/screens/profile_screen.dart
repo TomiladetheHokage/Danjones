@@ -5,7 +5,12 @@ import 'referral_screen.dart';
 import 'settings_screen.dart';
 import 'customer_support_screen.dart';
 import 'enable_2fa_scan_screen.dart';
+import 'auth/login_screen.dart';
+import 'trade_screen.dart';
+import 'p2p/my_ads_screen.dart';
+import 'kyc/verification_center_screen.dart';
 import '../services/api_service.dart';
+import '../services/data_store.dart';
 import '../models/user_profile.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -17,6 +22,24 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   late Future<UserProfile> userFuture;
+
+  Future<void> _handleLogout() async {
+    try {
+      await ApiService.logout();
+      await DataStore.instance.clear();
+
+      if (!mounted) return;
+      Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (context) => const LoginScreen()),
+        (route) => false,
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Logout failed. Please try again.')),
+      );
+    }
+  }
 
   @override
   void initState() {
@@ -172,13 +195,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
               // Menu Items
               _buildMenuGroup([
                 _buildMenuItem(
-                  icon: Icons.person_outline,
+                  imagePath: 'assets/icons/finger-print.png',
                   title: 'Identity Verification',
                   subtitle: 'Level 1 Limits: 50k NGN/Day',
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const VerificationCenterScreen()),
+                  ),
                   trailing: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFE4B53E).withOpacity(0.15),
+                      color: const Color(0xFFE4B53E).withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
@@ -191,12 +218,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const SizedBox(height: 16),
               _buildMenuGroup([
                 _buildMenuItem(
-                  icon: Icons.account_balance_outlined,
+                  imagePath: 'assets/icons/payment.png',
                   title: 'Payment Methods',
                   subtitle: 'Manage NGN Bank Accounts',
                 ),
                 _buildMenuItem(
-                  icon: Icons.security_outlined,
+                  imagePath: 'assets/icons/security.png',
                   title: 'Security Center',
                   subtitle: '2FA, Password, Anti-Phishing',
                   onTap: () {
@@ -211,20 +238,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       const SizedBox(width: 2),
                       Container(width: 6, height: 16, decoration: BoxDecoration(color: const Color(0xFFE4B53E), borderRadius: BorderRadius.circular(3))),
                       const SizedBox(width: 2),
-                      Container(width: 6, height: 16, decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(3))),
+                      Container(width: 6, height: 16, decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(3))),
                     ],
                   ),
                 ),
                 _buildMenuItem(
-                  icon: Icons.history,
+                  imagePath: 'assets/icons/history.png',
                   title: 'Transaction History',
                   subtitle: 'Spot, P2P, Withdrawals',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const TradeScreen()),
+                    );
+                  },
+                ),
+                _buildMenuItem(
+                  icon: Icons.campaign_outlined,
+                  title: 'My Ads',
+                  subtitle: 'Manage your P2P buy/sell ads',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const MyAdsScreen()),
+                    );
+                  },
                 ),
               ]),
               const SizedBox(height: 16),
               _buildMenuGroup([
                 _buildMenuItem(
-                  icon: Icons.card_giftcard,
+                  imagePath: 'assets/icons/refferral.png',
                   title: 'Referral & Rewards',
                   subtitle: 'Invite friends, earn up to 40%',
                   onTap: () {
@@ -238,7 +282,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const SizedBox(height: 16),
               _buildMenuGroup([
                 _buildMenuItem(
-                  icon: Icons.headset_mic_outlined,
+                  imagePath: 'assets/icons/customer-support.png',
                   title: 'Customer Support',
                   onTap: () {
                     Navigator.push(
@@ -248,7 +292,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   },
                 ),
                 _buildMenuItem(
-                  icon: Icons.settings_outlined,
+                  imagePath: 'assets/icons/settings.png',
                   title: 'Settings',
                   subtitle: 'Language, Theme',
                   onTap: () {
@@ -259,7 +303,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   },
                 ),
                 _buildMenuItem(
-                  icon: Icons.info_outline,
+                  imagePath: 'assets/icons/about.png',
                   title: 'About & Legal',
                 ),
               ]),
@@ -275,7 +319,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
-                  onPressed: () {},
+                  onPressed: _handleLogout,
                   child: Text(
                     'Log Out',
                     style: AppTheme.inter(color: const Color(0xFFE4B53E), fontSize: 15, fontWeight: FontWeight.w600),
@@ -318,7 +362,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildMenuItem({
-    required IconData icon,
+    IconData? icon,
+    String? imagePath,
     required String title,
     String? subtitle,
     Widget? trailing,
@@ -328,16 +373,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        color: Colors.transparent, // Expand tap area
+        color: Colors.transparent,
         child: Row(
           children: [
             Container(
+              width: 42,
+              height: 42,
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: const Color(0xFF45E555).withOpacity(0.1),
+                color: const Color(0xFF1E1E1E),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Icon(icon, color: const Color(0xFF45E555), size: 20),
+              child: imagePath != null
+                  ? Image.asset(
+                      imagePath,
+                      width: 20,
+                      height: 20,
+                      errorBuilder: (_, __, ___) =>
+                          Icon(icon ?? Icons.circle, color: Colors.white54, size: 20),
+                    )
+                  : Icon(icon ?? Icons.circle, color: Colors.white54, size: 20),
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -369,7 +424,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               trailing,
               const SizedBox(width: 12),
             ],
-            Icon(Icons.arrow_forward_ios, color: Colors.white.withOpacity(0.3), size: 14),
+            Icon(Icons.arrow_forward_ios, color: Colors.white.withValues(alpha: 0.3), size: 14),
           ],
         ),
       ),

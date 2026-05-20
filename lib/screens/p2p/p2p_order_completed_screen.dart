@@ -3,10 +3,46 @@ import '../../theme/app_theme.dart';
 import '../../widgets/p2p/p2p_info_row.dart';
 
 class P2POrderCompletedScreen extends StatelessWidget {
-  const P2POrderCompletedScreen({super.key});
+  final int? tradeId;
+  final double? fiatAmount;
+  final double? cryptoAmount;
+  final double? pricePerUnit;
+  final String? currencySymbol;
+  final String? sellerName;
+
+  const P2POrderCompletedScreen({
+    super.key,
+    this.tradeId,
+    this.fiatAmount,
+    this.cryptoAmount,
+    this.pricePerUnit,
+    this.currencySymbol,
+    this.sellerName,
+  });
+
+  String _formatMoney(double amount) {
+    final fixed = amount.toStringAsFixed(2);
+    final parts = fixed.split('.');
+    final whole = parts.first;
+    final dec = parts.last;
+    final buf = StringBuffer();
+    for (int i = 0; i < whole.length; i++) {
+      final left = whole.length - i;
+      buf.write(whole[i]);
+      if (left > 1 && left % 3 == 1) buf.write(',');
+    }
+    return '${buf.toString()}.$dec';
+  }
 
   @override
   Widget build(BuildContext context) {
+    final symbol = (currencySymbol == null || currencySymbol!.isEmpty) ? 'USDT' : currencySymbol!;
+    final tradeFiatAmount = fiatAmount ?? 125000;
+    final tradeCryptoAmount = cryptoAmount ?? 100;
+    final tradePrice = pricePerUnit ?? 1250;
+    final tradeSeller = (sellerName == null || sellerName!.isEmpty) ? 'CryptoKing_NG' : sellerName!;
+    final orderNumber = tradeId?.toString() ?? '29384920';
+
     return Scaffold(
       backgroundColor: const Color(0xFF0A0A0A),
       appBar: AppBar(
@@ -50,15 +86,15 @@ class P2POrderCompletedScreen extends StatelessWidget {
             Text('Assets have been released to your Funding Wallet', style: AppTheme.inter(color: Colors.white54, fontSize: 13)),
             const SizedBox(height: 48),
             
-            Text('100 USDT', style: AppTheme.inter(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)),
+            Text('${tradeCryptoAmount.toStringAsFixed(8)} $symbol', style: AppTheme.inter(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)),
             const SizedBox(height: 12),
             Text('Transaction Successful', style: AppTheme.inter(color: const Color(0xFFE4B53E), fontSize: 14, fontWeight: FontWeight.w500)),
             const SizedBox(height: 48),
             
-            const P2PInfoRow(label: 'Total Payment', value: '125,000.00 NGN'),
-            const P2PInfoRow(label: 'Price', value: '₦1,250.00 / USDT'),
-            const P2PInfoRow(label: 'Seller', value: 'CryptoKing_NG'),
-            const P2PInfoRow(label: 'Order No', value: '#29384920'),
+            P2PInfoRow(label: 'Total Payment', value: '${_formatMoney(tradeFiatAmount)} NGN'),
+            P2PInfoRow(label: 'Price', value: '₦${_formatMoney(tradePrice)} / $symbol'),
+            P2PInfoRow(label: 'Seller', value: tradeSeller),
+            P2PInfoRow(label: 'Order No', value: '#$orderNumber'),
             const SizedBox(height: 48),
             
             Container(

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 import '../models/crypto_asset.dart';
+import '../widgets/interactive_chart/candle_data.dart';
 import 'api_service.dart';
 
 class CryptoService {
@@ -70,5 +71,105 @@ class CryptoService {
 
   static Future<List<CryptoAsset>> fetchTopMovers() async {
     return fetchDashboardCurrencies();
+  }
+
+  // ── CoinGecko coin ID lookup ───────────────────────────────────────────────
+  /// Maps common ticker symbols to CoinGecko coin IDs.
+  static const Map<String, String> _coinIdMap = {
+    'btc': 'bitcoin',
+    'eth': 'ethereum',
+    'bnb': 'binancecoin',
+    'sol': 'solana',
+    'xrp': 'ripple',
+    'ada': 'cardano',
+    'matic': 'matic-network',
+    'dot': 'polkadot',
+    'doge': 'dogecoin',
+    'avax': 'avalanche-2',
+    'link': 'chainlink',
+    'uni': 'uniswap',
+    'ltc': 'litecoin',
+    'atom': 'cosmos',
+    'usdt': 'tether',
+    'usdc': 'usd-coin',
+    'trx': 'tron',
+    'shib': 'shiba-inu',
+  };
+
+  static String coinIdForSymbol(String symbol) {
+    return _coinIdMap[symbol.toLowerCase()] ?? symbol.toLowerCase();
+  }
+
+  // ── OHLC candle data ──────────────────────────────────────────────────────
+  /// Fetches real OHLC candle data from CoinGecko.
+  ///
+  /// [days] controls the range: 1 = last 24h, 7 = last week, 30 = last month.
+  /// CoinGecko returns candle intervals automatically based on [days]:
+  ///   days=1  → 30-minute candles
+  ///   days=7  → 4-hour candles
+  ///   days=30 → 4-hour candles
+  static Future<List<CandleData>> fetchOhlcCandles({
+    required String symbol,
+    required int days,
+  }) async {
+    final coinId = coinIdForSymbol(symbol);
+    final uri = Uri.parse(
+      'https://api.coingecko.com/api/v3/coins/$coinId/ohlc'
+      '?vs_currency=usd&days=$days',
+    );
+
+    final response = await http.get(uri, headers: {'Accept': 'application/json'})
+        .timeout(const Duration(seconds: 15));
+
+    if (response.statusCode == 200) {
+      final List<dynamic> raw = jsonDecode(response.body);
+      // Each item: [timestamp_ms, open, high, low, close]
+      return raw.map((item) {
+        final list = item as List<dynamic>;
+        return CandleData(
+          timestamp: (list[0] as num).toInt(),
+          open: (list[1] as num).toDouble(),
+          high: (list[2] as num).toDouble(),
+          low: (list[3] as num).toDouble(),
+          close: (list[4] as num).toDouble(),
+          volume: null,
+        );
+      }).toList();
+    } else if (response.statusCode == 429) {
+      throw Exception('Rate limited by CoinGecko. Please wait a moment.');
+    } else {
+      throw Exception('Failed to load chart data (${response.statusCode})');
+    }
+  }
+
+  // ── Live coin detail (market info) ────────────────────────────────────────
+  /// Returns fresh market_cap, circulating_supply, max_supply for a coin.
+  static Future<Map<String, double>> fetchCoinMarketDetail({
+    required String symbol,
+  }) async {
+    final coinId = coinIdForSymbol(symbol);
+    final uri = Uri.parse(
+      'https://api.coingecko.com/api/v3/coins/$coinId'
+      '?localization=false&tickers=false&community_data=false&developer_data=false',
+    );
+
+    final response = await http.get(uri, headers: {'Accept': 'application/json'})
+        .timeout(const Duration(seconds: 15));
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      final md = data['market_data'] as Map<String, dynamic>? ?? {};
+      return {
+        'market_cap': ((md['market_cap']?['usd']) as num?)?.toDouble() ?? 0.0,
+        'circulating_supply': ((md['circulating_supply']) as num?)?.toDouble() ?? 0.0,
+        'max_supply': ((md['max_supply']) as num?)?.toDouble() ?? 0.0,
+        'current_price': ((md['current_price']?['usd']) as num?)?.toDouble() ?? 0.0,
+        'price_change_24h': ((md['price_change_percentage_24h']) as num?)?.toDouble() ?? 0.0,
+      };
+    } else if (response.statusCode == 429) {
+      throw Exception('Rate limited by CoinGecko. Please wait a moment.');
+    } else {
+      throw Exception('Failed to load coin details (${response.statusCode})');
+    }
   }
 }

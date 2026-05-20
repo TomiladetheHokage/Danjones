@@ -1,16 +1,322 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'dart:async';
 import '../../theme/app_theme.dart';
-import '../../widgets/p2p/p2p_user_header.dart';
-import '../../widgets/p2p/p2p_warning_box.dart';
-import '../../widgets/p2p/p2p_big_timer.dart';
+import '../../services/api_service.dart';
 import 'p2p_order_review_screen.dart';
-import 'p2p_chat_screen.dart';
 
-class P2PAwaitingPaymentScreen extends StatelessWidget {
-  const P2PAwaitingPaymentScreen({super.key});
+class P2PAwaitingPaymentScreen extends StatefulWidget {
+  final int tradeId;
+  final double fiatAmount;
+  final double cryptoAmount;
+  final double pricePerUnit;
+  final String currencySymbol;
+  final String currencyImage;
+  final String sellerName;
+  final DateTime? createdAt;
+
+  const P2PAwaitingPaymentScreen({
+    super.key,
+    required this.tradeId,
+    required this.fiatAmount,
+    required this.cryptoAmount,
+    required this.pricePerUnit,
+    required this.currencySymbol,
+    required this.currencyImage,
+    required this.sellerName,
+    this.createdAt,
+  });
+
+  @override
+  State<P2PAwaitingPaymentScreen> createState() => _P2PAwaitingPaymentScreenState();
+}
+
+class _P2PAwaitingPaymentScreenState extends State<P2PAwaitingPaymentScreen> {
+  late Timer _timer;
+  int _secondsRemaining = 900; // 15 minutes
+  bool _isLoading = false;
+  static const String _dummyBankName = 'Kuda Microfinance Bank';
+  static const String _dummyAccountNumber = '2039 485 722';
+  static const String _dummyStatus = 'Online';
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.createdAt != null) {
+      final elapsed = DateTime.now().difference(widget.createdAt!).inSeconds;
+      _secondsRemaining = (900 - elapsed).clamp(0, 900);
+    }
+    _startTimer();
+  }
+
+  void _startTimer() {
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (mounted) {
+        setState(() {
+          if (_secondsRemaining > 0) {
+            _secondsRemaining--;
+          } else {
+            _timer.cancel();
+          }
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer.cancel();
+    super.dispose();
+  }
+
+  String _formatTime(int seconds) {
+    final mins = seconds ~/ 60;
+    final secs = seconds % 60;
+    return '${mins.toString().padLeft(2, '0')}:${secs.toString().padLeft(2, '0')}';
+  }
+
+  String _formatCurrency(double value) {
+    final parts = value.toStringAsFixed(2).split('.');
+    final whole = parts[0];
+    final buffer = StringBuffer();
+    for (int i = 0; i < whole.length; i++) {
+      final reversedIndex = whole.length - i;
+      buffer.write(whole[i]);
+      if (reversedIndex > 1 && reversedIndex % 3 == 1) {
+        buffer.write(',');
+      }
+    }
+    return '${buffer.toString()}.${parts[1]}';
+  }
+
+  Future<void> _copyValue(String value, String label) async {
+    await Clipboard.setData(ClipboardData(text: value));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('$label copied')),
+    );
+  }
+
+  Future<void> _handleMarkPaid() async {
+    setState(() => _isLoading = true);
+
+    try {
+      await ApiService.markP2pTradePaid(tradeId: widget.tradeId);
+
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => P2POrderReviewScreen(
+            tradeId: widget.tradeId,
+            fiatAmount: widget.fiatAmount,
+            cryptoAmount: widget.cryptoAmount,
+            pricePerUnit: widget.pricePerUnit,
+            currencySymbol: widget.currencySymbol,
+            sellerName: widget.sellerName,
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      _showErrorDialog(e.toString().replaceAll('Exception: ', ''));
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<void> _handleCancel() async {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: const Color(0xFF1E1E1E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  color: Colors.orangeAccent.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.warning_amber_rounded,
+                  color: Colors.orangeAccent,
+                  size: 48,
+                ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Cancel Order?',
+                style: AppTheme.inter(
+                  color: Colors.white,
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Are you sure you want to cancel this order? This action cannot be undone.',
+                textAlign: TextAlign.center,
+                style: AppTheme.inter(
+                  color: Colors.white54,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 32),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Color(0xFFE4B53E)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: Text(
+                        'Keep Order',
+                        style: AppTheme.inter(
+                          color: const Color(0xFFE4B53E),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _performCancel();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.redAccent,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: Text(
+                        'Cancel',
+                        style: AppTheme.inter(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _performCancel() async {
+    setState(() => _isLoading = true);
+
+    try {
+      await ApiService.cancelP2pTrade(tradeId: widget.tradeId);
+
+      if (!mounted) return;
+      Navigator.of(context).popUntil((route) => route.isFirst);
+    } catch (e) {
+      if (!mounted) return;
+      _showErrorDialog(e.toString().replaceAll('Exception: ', ''));
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: const Color(0xFF1E1E1E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  color: Colors.redAccent.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.error_outline_rounded,
+                  color: Colors.redAccent,
+                  size: 48,
+                ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Error',
+                style: AppTheme.inter(
+                  color: Colors.white,
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: AppTheme.inter(
+                  color: Colors.white54,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 32),
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.redAccent,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(25),
+                    ),
+                  ),
+                  child: Text(
+                    'Okay',
+                    style: AppTheme.inter(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    final minutes = (_secondsRemaining ~/ 60).toString().padLeft(2, '0');
+    final seconds = (_secondsRemaining % 60).toString().padLeft(2, '0');
+    final amountText = _formatCurrency(widget.fiatAmount);
+    final priceText = _formatCurrency(widget.pricePerUnit);
+    final avatarText = widget.sellerName.isEmpty
+        ? 'DJ'
+        : widget.sellerName.substring(0, widget.sellerName.length >= 2 ? 2 : 1).toUpperCase();
+
     return Scaffold(
       backgroundColor: const Color(0xFF0A0A0A),
       appBar: AppBar(
@@ -20,135 +326,308 @@ class P2PAwaitingPaymentScreen extends StatelessWidget {
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text('Order #29384920', style: AppTheme.inter(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.white)),
+        title: Text(
+          'Order #${widget.tradeId}',
+          style: AppTheme.inter(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.white),
+        ),
         centerTitle: true,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
         physics: const BouncingScrollPhysics(),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Text('Awaiting Payment', style: AppTheme.inter(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+            Text(
+              'Awaiting Payment',
+              style: AppTheme.inter(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700),
+            ),
             const SizedBox(height: 8),
-            Text('Please pay the seller within', style: AppTheme.inter(color: Colors.white54, fontSize: 13)),
-            const SizedBox(height: 24),
-            
-            const P2PBigTimer(minutes: 14, seconds: 59),
-            const SizedBox(height: 32),
-            
+            Text(
+              'Please pay the seller within',
+              style: AppTheme.inter(color: Colors.white54, fontSize: 14),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _buildTimerBox(value: minutes, label: 'Min'),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  child: Text(
+                    ':',
+                    style: AppTheme.inter(color: Colors.white38, fontSize: 26, fontWeight: FontWeight.w700),
+                  ),
+                ),
+                _buildTimerBox(value: seconds, label: 'Sec'),
+              ],
+            ),
+            const SizedBox(height: 22),
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 22),
               decoration: BoxDecoration(
-                color: const Color(0xFF151515),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.white.withOpacity(0.05)),
+                borderRadius: BorderRadius.circular(18),
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color(0xFF1B1B1D), Color(0xFF141416)],
+                ),
+                border: Border.all(color: Colors.white.withOpacity(0.06)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.22),
+                    blurRadius: 24,
+                    offset: const Offset(0, 12),
+                  ),
+                ],
               ),
               child: Column(
                 children: [
-                  Text('Total Amount', style: AppTheme.inter(color: Colors.white54, fontSize: 13)),
-                  const SizedBox(height: 12),
-                  Text('₦125,000.00', style: AppTheme.inter(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 12),
-                  Text('Buy 100.00 USDT @ ₦1,250.00', style: AppTheme.inter(color: const Color(0xFFE4B53E), fontSize: 12)),
+                  Text(
+                    'Total Amount',
+                    style: AppTheme.inter(color: Colors.white38, fontSize: 15, fontWeight: FontWeight.w500),
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    '₦$amountText',
+                    style: AppTheme.inter(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    'Buy ${widget.cryptoAmount.toStringAsFixed(8)} ${widget.currencySymbol} @ ₦$priceText',
+                    textAlign: TextAlign.center,
+                    style: AppTheme.inter(color: const Color(0xFFE4B53E), fontSize: 13, fontWeight: FontWeight.w500),
+                  ),
                 ],
               ),
             ),
-            const SizedBox(height: 24),
-            
+            const SizedBox(height: 20),
             Container(
-              padding: const EdgeInsets.all(20),
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: const Color(0xFF151515),
+                color: const Color(0xFF1A1A1E),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.white.withOpacity(0.05)),
+                border: Border.all(color: Colors.white.withOpacity(0.04)),
               ),
               child: Column(
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: const LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [Color(0xFFB88A2D), Color(0xFFE4B53E)],
+                          ),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          avatarText,
+                          style: AppTheme.inter(color: Colors.black, fontSize: 16, fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              widget.sellerName,
+                              style: AppTheme.inter(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              _dummyStatus,
+                              style: AppTheme.inter(color: const Color(0xFF28C76F), fontSize: 13, fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
+                      ),
+                      InkWell(
+                        onTap: () => _copyValue(widget.sellerName, 'Seller name'),
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          width: 34,
+                          height: 34,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: const Color(0xFFE4B53E).withOpacity(0.4)),
+                          ),
+                          child: const Icon(Icons.copy_rounded, color: Color(0xFFE4B53E), size: 18),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+                  _buildBankRow(
+                    label: 'Bank Name',
+                    value: _dummyBankName,
+                    onTap: () => _copyValue(_dummyBankName, 'Bank name'),
+                  ),
+                  const SizedBox(height: 14),
+                  _buildBankRow(
+                    label: 'Account Number',
+                    value: _dummyAccountNumber,
+                    onTap: () => _copyValue(_dummyAccountNumber, 'Account number'),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1D1D1B),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFFE4B53E).withOpacity(0.14)),
+              ),
+              child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  P2PUserHeader(
-                    name: 'CryptoKingNG',
-                    isOnline: true,
-                    onChatTap: () {
-                      Navigator.push(context, MaterialPageRoute(builder: (context) => const P2PChatScreen()));
-                    },
+                  Container(
+                    width: 22,
+                    height: 22,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: const Color(0xFFE4B53E).withOpacity(0.8)),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      '!',
+                      style: AppTheme.inter(color: const Color(0xFFE4B53E), fontSize: 12, fontWeight: FontWeight.w700),
+                    ),
                   ),
-                  const SizedBox(height: 24),
-                  _buildCopyRow('Bank Name', 'Kuda Microfinance Bank'),
-                  const SizedBox(height: 16),
-                  _buildCopyRow('Account Number', '2039 485 722', isBold: true),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Do not include crypto-related terms (e.g., BTC, USDT, Crypto) in the bank transfer remarks to avoid transaction failure.',
+                      style: AppTheme.inter(color: Colors.white60, fontSize: 12, height: 1.55),
+                    ),
+                  ),
                 ],
               ),
             ),
-            const SizedBox(height: 24),
-            
-            const P2PWarningBox(
-              highlightedPrefix: 'Do not include crypto-related terms ',
-              message: 'Do not include crypto-related terms (e.g., BTC, USDT, Crypto) in the bank transfer remarks to avoid transaction failure.',
-            ),
-            const SizedBox(height: 32),
-            
+            const SizedBox(height: 26),
             TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text('Cancel Order', style: AppTheme.inter(color: const Color(0xFFE4B53E), fontSize: 14, fontWeight: FontWeight.w600)),
+              onPressed: _isLoading ? null : _handleCancel,
+              child: Text(
+                'Cancel',
+                style: AppTheme.inter(color: const Color(0xFFE4B53E), fontSize: 15, fontWeight: FontWeight.w600),
+              ),
             ),
-            const SizedBox(height: 16),
-            
-            _buildPrimaryButton(context),
-            const SizedBox(height: 24),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: ElevatedButton(
+                onPressed: _isLoading ? null : _handleMarkPaid,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFE4B53E),
+                  disabledBackgroundColor: const Color(0xFFE4B53E).withOpacity(0.5),
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                ),
+                child: _isLoading
+                    ? const SizedBox(
+                        height: 24,
+                        width: 24,
+                        child: CircularProgressIndicator(
+                          color: Colors.black,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : Text(
+                        'I Have Paid',
+                        style: AppTheme.inter(
+                          color: Colors.black,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+              ),
+            ),
+            const SizedBox(height: 40),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildCopyRow(String label, String value, {bool isBold = false}) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label, style: AppTheme.inter(color: Colors.white54, fontSize: 12)),
-            const SizedBox(height: 4),
-            Text(value, style: AppTheme.inter(color: Colors.white, fontSize: 15, fontWeight: isBold ? FontWeight.bold : FontWeight.w600)),
-          ],
-        ),
-        const Icon(Icons.copy_rounded, color: Color(0xFFE4B53E), size: 18),
-      ],
-    );
-  }
-
-  Widget _buildPrimaryButton(BuildContext context) {
+  Widget _buildTimerBox({required String value, required String label}) {
+    final isCritical = _secondsRemaining < 300;
     return Container(
-      width: double.infinity,
-      height: 56,
+      width: 58,
+      padding: const EdgeInsets.symmetric(vertical: 12),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(30),
-        gradient: const LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Color(0xFFF3C756), Color(0xFFB88A2D)],
-        ),
+        color: const Color(0xFF1B1B1D),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.05)),
       ),
-      child: ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.transparent,
-          shadowColor: Colors.transparent,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-        ),
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const P2POrderReviewScreen()),
-          );
-        },
-        child: Text(
-          'I have Paid',
-          style: AppTheme.inter(fontWeight: FontWeight.w600, fontSize: 16, color: Colors.black),
-        ),
+      child: Column(
+        children: [
+          Text(
+            value,
+            style: AppTheme.inter(
+              color: isCritical ? Colors.redAccent : const Color(0xFFE4B53E),
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: AppTheme.inter(color: Colors.white38, fontSize: 11, fontWeight: FontWeight.w500),
+          ),
+        ],
       ),
+    );
+  }
+
+  Widget _buildBankRow({
+    required String label,
+    required String value,
+    required VoidCallback onTap,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: AppTheme.inter(color: Colors.white38, fontSize: 13),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                value,
+                style: AppTheme.inter(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w700),
+              ),
+            ],
+          ),
+        ),
+        InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(10),
+          child: Container(
+            width: 30,
+            height: 30,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: const Color(0xFFE4B53E).withOpacity(0.35)),
+            ),
+            child: const Icon(Icons.copy_rounded, color: Color(0xFFE4B53E), size: 16),
+          ),
+        ),
+      ],
     );
   }
 }

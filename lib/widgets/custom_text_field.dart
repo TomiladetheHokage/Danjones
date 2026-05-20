@@ -7,6 +7,7 @@ class CustomTextField extends StatefulWidget {
   final bool isPassword;
   final TextEditingController? controller;
   final TextInputType keyboardType;
+  final ValueChanged<String>? onChanged;
 
   const CustomTextField({
     super.key,
@@ -15,6 +16,7 @@ class CustomTextField extends StatefulWidget {
     this.isPassword = false,
     this.controller,
     this.keyboardType = TextInputType.text,
+    this.onChanged,
   });
 
   @override
@@ -48,6 +50,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
             controller: widget.controller,
             obscureText: widget.isPassword ? _obscureText : false,
             keyboardType: widget.keyboardType,
+            onChanged: widget.onChanged,
             style: GoogleFonts.outfit(color: Colors.white),
             decoration: InputDecoration(
               hintText: widget.hintText,

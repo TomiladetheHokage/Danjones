@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../widgets/custom_text_field.dart';
+import '../../widgets/custom_dialog.dart';
 import '../../services/api_service.dart';
+import '../legal/terms_screen.dart';
+import '../legal/privacy_policy_screen.dart';
 import 'login_screen.dart';
+import 'security_verification_screen.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -21,6 +26,27 @@ class _SignUpScreenState extends State<SignUpScreen> {
   bool _agreedToTerms = false;
   bool _isLoading = false;
   bool _showRefCode = false;
+  bool _hasInteractedWithPassword = false;
+
+  late TapGestureRecognizer _termsRecognizer;
+  late TapGestureRecognizer _privacyRecognizer;
+
+  @override
+  void initState() {
+    super.initState();
+    _termsRecognizer = TapGestureRecognizer()
+      ..onTap = () {
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (context) => const TermsScreen()),
+        );
+      };
+    _privacyRecognizer = TapGestureRecognizer()
+      ..onTap = () {
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (context) => const PrivacyPolicyScreen()),
+        );
+      };
+  }
 
   @override
   void dispose() {
@@ -30,6 +56,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     _refCodeController.dispose();
+    _termsRecognizer.dispose();
+    _privacyRecognizer.dispose();
     super.dispose();
   }
 
@@ -55,185 +83,132 @@ class _SignUpScreenState extends State<SignUpScreen> {
       _isLoading = true;
     });
 
+    // try {
+    //   await ApiService.register(
+    //     name: _nameController.text.trim(),
+    //     email: _emailController.text.trim(),
+    //     password: _passwordController.text,
+    //     phone: _phoneController.text.trim(),
+    //     refCode: _refCodeController.text.trim().isEmpty ? null : _refCodeController.text.trim(),
+    //   );
+    //   if (!mounted) return;
+    //   _showSuccessDialog();
+    // } 
+    // catch (e) {
+    //   if (!mounted) return;
+    //   _showErrorDialog(e.toString().replaceAll('Exception: ', ''));
+    // } finally {
+    //   if (mounted) {
+    //     setState(() {
+    //       _isLoading = false;
+    //     });
+    //   }
+    // }
     try {
-      await ApiService.register(
-        name: _nameController.text.trim(),
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
-        phone: _phoneController.text.trim(),
-        refCode: _refCodeController.text.trim().isEmpty ? null : _refCodeController.text.trim(),
-      );
-      if (!mounted) return;
-      _showSuccessDialog();
-    } catch (e) {
-      if (!mounted) return;
-      _showErrorDialog(e.toString().replaceAll('Exception: ', ''));
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
+  const bool testMode = true;
+
+  if (!testMode) {
+    await ApiService.register(
+      name: _nameController.text.trim(),
+      email: _emailController.text.trim(),
+      password: _passwordController.text,
+      phone: _phoneController.text.trim(),
+      refCode: _refCodeController.text.trim().isEmpty
+          ? null
+          : _refCodeController.text.trim(),
+    );
+  } else {
+    await Future.delayed(const Duration(seconds: 1));
+  }
+
+  if (!mounted) return;
+  _showSuccessDialog();
+} catch (e) {
+  if (!mounted) return;
+  _showErrorDialog(e.toString().replaceAll('Exception: ', ''));
+} finally {
+  if (mounted) {
+    setState(() {
+      _isLoading = false;
+    });
+  }
+}
   }
 
   void _showSuccessDialog() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) {
-        return Dialog(
-          backgroundColor: const Color(0xFF1E1E1E),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 80,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE4B53E).withOpacity(0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.check_circle_rounded,
-                    color: Color(0xFFE4B53E),
-                    size: 48,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                Text(
-                  'Sign Up Successful',
-                  style: GoogleFonts.outfit(
-                    color: Colors.white,
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'Your account has been created successfully. Let\'s verify your email now.',
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.outfit(
-                    color: Colors.white54,
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(height: 32),
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.of(context).pop(); // Close dialog
-                      Navigator.of(context).pushAndRemoveUntil(
-                        MaterialPageRoute(builder: (context) => const LoginScreen()),
-                        (route) => false,
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFE4B53E),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(25),
-                      ),
-                    ),
-                    child: Text(
-                      'Continue',
-                      style: GoogleFonts.outfit(
-                        color: Colors.black,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+    CustomDialog.showSuccess(
+      context,
+      title: 'Sign Up Successful',
+      message: 'Your account has been created successfully. Let\'s verify your email now.',
+      onButtonPressed: () {
+        Navigator.of(context).pop(); // Close dialog
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(
+            builder: (context) => SecurityVerificationScreen(
+              email: _emailController.text.trim(),
             ),
           ),
+          (route) => false,
         );
       },
     );
   }
 
   void _showErrorDialog(String message) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return Dialog(
-          backgroundColor: const Color(0xFF1E1E1E),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 80,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    color: Colors.redAccent.withOpacity(0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.error_outline_rounded,
-                    color: Colors.redAccent,
-                    size: 48,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                Text(
-                  'Sign Up Error',
-                  style: GoogleFonts.outfit(
-                    color: Colors.white,
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  message,
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.outfit(
-                    color: Colors.white54,
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(height: 32),
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.of(context).pop(); // Close dialog
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.redAccent,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(25),
-                      ),
-                    ),
-                    child: Text(
-                      'Okay',
-                      style: GoogleFonts.outfit(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
+    CustomDialog.showError(
+      context,
+      title: 'Sign Up Error',
+      message: message,
     );
+  }
+
+  int _getPasswordStrength(String password) {
+    if (password.isEmpty) return 0;
+    int score = 0;
+    if (password.length >= 6) score++;
+    if (password.contains(RegExp(r'[A-Z]'))) score++;
+    if (password.contains(RegExp(r'[0-9]'))) score++;
+    if (password.contains(RegExp(r'[^a-zA-Z0-9\s]'))) score++;
+    return score;
   }
 
   @override
   Widget build(BuildContext context) {
+
+    final password = _passwordController.text;
+
+final int score =
+    _hasInteractedWithPassword ? _getPasswordStrength(password) : -1;
+
+final Color strengthColor;
+final String strengthText;
+final int filledBars;
+  
+
+if (score == -1) {
+  strengthColor = Colors.white12;
+  strengthText = '';
+  filledBars = 0;
+}
+
+   else if (score <= 1) {
+      strengthColor = Colors.redAccent;
+      strengthText = 'Weak';
+      filledBars = 1;
+    } else if (score == 2) {
+      strengthColor = Colors.orangeAccent;
+      strengthText = 'Medium';
+      filledBars = 2;
+    } else if (score == 3) {
+      strengthColor = const Color(0xFFE4B53E);
+      strengthText = 'Strong';
+      filledBars = 3;
+    } else {
+      strengthColor = const Color(0xFF4CAF50);
+      strengthText = 'Very Strong';
+      filledBars = 4;
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFF151515),
       appBar: AppBar(
@@ -308,27 +283,40 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   hintText: 'Enter your password',
                   isPassword: true,
                   controller: _passwordController,
+                  onChanged: (value) {
+  setState(() {
+    _hasInteractedWithPassword = value.isNotEmpty;
+  });
+},
                 ),
                 const SizedBox(height: 8),
                 
                 // Password Strength Indicator (Simplified)
                 Row(
-                  children: [
-                     Expanded(child: Container(height: 4, color: const Color(0xFFE4B53E))),
-                     const SizedBox(width: 4),
-                     Expanded(child: Container(height: 4, color: Colors.white12)),
-                     const SizedBox(width: 4),
-                     Expanded(child: Container(height: 4, color: Colors.white12)),
-                     const SizedBox(width: 4),
-                     Expanded(child: Container(height: 4, color: Colors.white12)),
-                  ],
+                  children: List.generate(4, (index) {
+                    return Container(
+                      margin: EdgeInsets.only(right: index < 3 ? 6 : 0),
+                      width: 36,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: index < filledBars
+                            ? strengthColor
+                            : Colors.white.withOpacity(0.08),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    );
+                  }),
                 ),
                 const SizedBox(height: 4),
                 Align(
                   alignment: Alignment.centerRight,
                   child: Text(
-                    'weak',
-                    style: GoogleFonts.outfit(color: Colors.white30, fontSize: 12),
+                    strengthText,
+                    style: GoogleFonts.outfit(
+  color: strengthColor,
+  fontSize: 12,
+  fontWeight: FontWeight.w500,
+),
                   ),
                 ),
 
@@ -401,11 +389,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
                             TextSpan(
                               text: 'Terms of Service',
                               style: GoogleFonts.outfit(color: const Color(0xFFE4B53E)),
+                              recognizer: _termsRecognizer,
                             ),
                             const TextSpan(text: ' and '),
                             TextSpan(
                               text: 'Privacy Policy',
                               style: GoogleFonts.outfit(color: const Color(0xFFE4B53E)),
+                              recognizer: _privacyRecognizer,
                             ),
                             const TextSpan(text: '.'),
                           ],
