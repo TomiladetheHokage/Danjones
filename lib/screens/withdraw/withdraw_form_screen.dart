@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -7,7 +8,6 @@ import 'package:http/http.dart' as http;
 
 import '../../models/wallet.dart';
 import '../../services/api_service.dart';
-import '../../services/data_store.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/custom_dialog.dart';
 
@@ -27,15 +27,19 @@ class _WithdrawFormScreenState extends State<WithdrawFormScreen> {
 
   bool _isSubmitting = false;
 
-  double get _balance => double.tryParse(widget.wallet.balance) ?? 0.0;
+  // Fee state
+  double? _feeUsd;        // null = not yet fetched, -1 = failed
+  bool _isFetchingFee = false;
+  Timer? _feeDebounce;
 
+  double get _balance => double.tryParse(widget.wallet.balance) ?? 0.0;
   double get _amount =>
       double.tryParse(_amountController.text.replaceAll(',', '')) ?? 0.0;
 
-  // Fee is 0 until the API provides it
-  double get _fee => 0.0;
-
-  double get _youReceive => (_amount - _fee).clamp(0, double.infinity);
+  double get _youReceive => _amount > 0
+      ? (_amount - (_feeUsd != null && _feeUsd! >= 0 ? 0 : 0))
+          .clamp(0, double.infinity)
+      : 0.0;
 
   bool get _canSubmit =>
       _addressController.text.trim().isNotEmpty &&
@@ -55,12 +59,44 @@ class _WithdrawFormScreenState extends State<WithdrawFormScreen> {
     super.initState();
     _addressFocus.addListener(() => setState(() {}));
     _amountFocus.addListener(() => setState(() {}));
-    _amountController.addListener(() => setState(() {}));
+    _amountController.addListener(_onAmountChanged);
     _addressController.addListener(() => setState(() {}));
+  }
+
+  void _onAmountChanged() {
+    setState(() {});
+    _feeDebounce?.cancel();
+    final amt = double.tryParse(_amountController.text.replaceAll(',', ''));
+    if (amt == null || amt <= 0) {
+      setState(() => _feeUsd = null);
+      return;
+    }
+    // Debounce 600ms so we don't hammer the API on every keystroke
+    _feeDebounce = Timer(const Duration(milliseconds: 600), () => _fetchFee(amt));
+  }
+
+  Future<void> _fetchFee(double amount) async {
+    if (!mounted) return;
+    setState(() => _isFetchingFee = true);
+    try {
+      final data = await ApiService.getSendFee(
+        currencyId: widget.wallet.currencyId,
+        amount: amount,
+      );
+      if (!mounted) return;
+      final feeUsd = (data['fee_usd'] as num?)?.toDouble();
+      setState(() => _feeUsd = feeUsd ?? -1);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _feeUsd = -1); // -1 signals fetch failed
+    } finally {
+      if (mounted) setState(() => _isFetchingFee = false);
+    }
   }
 
   @override
   void dispose() {
+    _feeDebounce?.cancel();
     _addressController.dispose();
     _amountController.dispose();
     _addressFocus.dispose();
@@ -79,12 +115,6 @@ class _WithdrawFormScreenState extends State<WithdrawFormScreen> {
       _addressController.text = data!.text!;
       setState(() {});
     }
-  }
-
-  String _formatMoney(double v) {
-    if (v >= 1e6) return '${(v / 1e6).toStringAsFixed(2)}M';
-    if (v >= 1e3) return '${(v / 1e3).toStringAsFixed(2)}K';
-    return v.toStringAsFixed(2);
   }
 
   Future<void> _submit() async {
@@ -121,9 +151,9 @@ class _WithdrawFormScreenState extends State<WithdrawFormScreen> {
               'Your withdrawal of ${_amountController.text} ${widget.wallet.currency.symbol.toUpperCase()} has been submitted and is being processed.',
           buttonText: 'Done',
           onButtonPressed: () {
-            Navigator.of(context).pop(); // close dialog
-            Navigator.of(context).pop(); // back to select coin
-            Navigator.of(context).pop(); // back to asset details
+            Navigator.of(context).pop();
+            Navigator.of(context).pop();
+            Navigator.of(context).pop();
           },
         );
       } else {
@@ -398,6 +428,46 @@ class _WithdrawFormScreenState extends State<WithdrawFormScreen> {
 
   // ── Summary card ─────────────────────────────────────────────────────────────
   Widget _buildSummaryCard(String symbol) {
+    // Build fee display string
+    String feeDisplay;
+    Widget? feeTrailing;
+
+    if (_amount <= 0) {
+      feeDisplay = '—';
+    } else if (_isFetchingFee) {
+      feeDisplay = '';
+      feeTrailing = const SizedBox(
+        width: 14,
+        height: 14,
+        child: CircularProgressIndicator(
+          strokeWidth: 2,
+          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFE4B53E)),
+        ),
+      );
+    } else if (_feeUsd == null) {
+      feeDisplay = '—';
+    } else if (_feeUsd! < 0) {
+      // Fetch failed — show -- with retry
+      feeDisplay = '--';
+      feeTrailing = GestureDetector(
+        onTap: () => _fetchFee(_amount),
+        child: Text(
+          'Retry',
+          style: AppTheme.inter(
+            color: const Color(0xFFE4B53E),
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      );
+    } else {
+      feeDisplay = '\$${_feeUsd!.toStringAsFixed(2)}';
+    }
+
+    final youReceiveDisplay = _amount > 0
+        ? '${_amount.toStringAsFixed(widget.wallet.currency.decimalPlaces)} $symbol'
+        : '—';
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -407,15 +477,17 @@ class _WithdrawFormScreenState extends State<WithdrawFormScreen> {
       ),
       child: Column(
         children: [
-          _summaryRow('Withdrawal Fee', _amount > 0 ? '0.00 $symbol' : '—'),
+          _summaryRow(
+            'Withdrawal Fee',
+            feeDisplay,
+            trailing: feeTrailing,
+          ),
           const SizedBox(height: 12),
           Divider(color: Colors.white.withValues(alpha: 0.05), height: 1),
           const SizedBox(height: 12),
           _summaryRow(
             'You Receive',
-            _amount > 0
-                ? '${_youReceive.toStringAsFixed(widget.wallet.currency.decimalPlaces)} $symbol'
-                : '—',
+            youReceiveDisplay,
             valueColor: _amount > 0 ? const Color(0xFF33D17A) : Colors.white38,
             bold: true,
           ),
@@ -424,21 +496,29 @@ class _WithdrawFormScreenState extends State<WithdrawFormScreen> {
     );
   }
 
-  Widget _summaryRow(String label, String value,
-      {Color? valueColor, bool bold = false}) {
+  Widget _summaryRow(
+    String label,
+    String value, {
+    Color? valueColor,
+    bool bold = false,
+    Widget? trailing,
+  }) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(label,
             style: AppTheme.inter(color: Colors.white54, fontSize: 13)),
-        Text(
-          value,
-          style: AppTheme.inter(
-            color: valueColor ?? Colors.white,
-            fontSize: 13,
-            fontWeight: bold ? FontWeight.w700 : FontWeight.w500,
+        if (trailing != null)
+          trailing
+        else
+          Text(
+            value,
+            style: AppTheme.inter(
+              color: valueColor ?? Colors.white,
+              fontSize: 13,
+              fontWeight: bold ? FontWeight.w700 : FontWeight.w500,
+            ),
           ),
-        ),
       ],
     );
   }

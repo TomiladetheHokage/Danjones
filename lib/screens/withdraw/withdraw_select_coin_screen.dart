@@ -7,7 +7,7 @@ import '../../theme/app_theme.dart';
 import 'withdraw_form_screen.dart';
 
 class WithdrawSelectCoinScreen extends StatefulWidget {
-  /// If provided, this wallet is highlighted / pre-selected.
+  // If provided, this wallet is highlighted / pre-selected.
   final Wallet? preselected;
 
   const WithdrawSelectCoinScreen({super.key, this.preselected});
@@ -43,11 +43,11 @@ class _WithdrawSelectCoinScreenState extends State<WithdrawSelectCoinScreen> {
   }
 
   void _onCoinTap(Wallet wallet) {
-    showModalBottomSheet(
-      context: context,
-      useRootNavigator: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => _WithdrawTypeSheet(wallet: wallet),
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => WithdrawFormScreen(wallet: wallet),
+      ),
     );
   }
 
@@ -271,196 +271,3 @@ class _CoinTile extends StatelessWidget {
   }
 }
 
-// ── Withdrawal type bottom sheet ──────────────────────────────────────────────
-class _WithdrawTypeSheet extends StatelessWidget {
-  final Wallet wallet;
-  const _WithdrawTypeSheet({required this.wallet});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
-      decoration: const BoxDecoration(
-        color: Color(0xFF111113),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      child: SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Handle
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            // Header
-            Row(
-              children: [
-                SizedBox(
-                  width: 36,
-                  height: 36,
-                  child: ClipOval(
-                    child: wallet.currency.fullImageUrl.startsWith('http')
-                        ? CachedNetworkImage(
-                            imageUrl: wallet.currency.fullImageUrl,
-                            fit: BoxFit.contain,
-                            errorWidget: (_, __, ___) => const Icon(
-                                Icons.token,
-                                color: Colors.white24,
-                                size: 22),
-                          )
-                        : const Icon(Icons.token,
-                            color: Colors.white24, size: 22),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Text(
-                  'Withdraw ${wallet.currency.symbol.toUpperCase()}',
-                  style: AppTheme.inter(
-                      color: Colors.white,
-                      fontSize: 17,
-                      fontWeight: FontWeight.w700),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Select withdrawal method',
-              style: AppTheme.inter(color: Colors.white38, fontSize: 13),
-            ),
-            const SizedBox(height: 24),
-
-            // On-chain option
-            GestureDetector(
-              onTap: () {
-                Navigator.pop(context); // close sheet
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => WithdrawFormScreen(wallet: wallet),
-                  ),
-                );
-              },
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1A1A1C),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.07)),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFE4B53E)
-                            .withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(Icons.link_rounded,
-                          color: Color(0xFFE4B53E), size: 22),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'On-chain Withdrawal',
-                            style: AppTheme.inter(
-                                color: Colors.white,
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Send to any external wallet address',
-                            style: AppTheme.inter(
-                                color: Colors.white38, fontSize: 12),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const Icon(Icons.arrow_forward_ios_rounded,
-                        color: Color(0xFFE4B53E), size: 16),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // Coming soon — internal transfer
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFF141416),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.04)),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.04),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(Icons.swap_horiz_rounded,
-                        color: Colors.white.withValues(alpha: 0.2),
-                        size: 22),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Internal Transfer',
-                          style: AppTheme.inter(
-                              color: Colors.white38,
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Transfer between Danjones accounts',
-                          style: AppTheme.inter(
-                              color: Colors.white24, fontSize: 12),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.06),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      'Soon',
-                      style: AppTheme.inter(
-                          color: Colors.white38,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}

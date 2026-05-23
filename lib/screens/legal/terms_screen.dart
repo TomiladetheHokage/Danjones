@@ -52,29 +52,54 @@ class TermsScreen extends StatelessWidget {
                     'The Platform is intended solely for users who are 18 years of age or older. By using the Platform, you represent and warrant that you are of legal age to form a binding contract and meet all of the foregoing eligibility requirements. You also represent that you are not on any trade embargo or economic sanctions lists, such as the UN Security Council Sanctions List.',
               ),
               
+     _buildLegalSection(
+  title: '3. Risk Disclosure',
+  content:
+      'Trading digital assets involves significant risk and can result in the loss of your invested capital. You should not invest more than you can afford to lose and should ensure that you fully understand the risks involved.\n\n'
+      'Market Volatility: Prices can fluctuate significantly in very short periods.\n'
+      'Liquidity Risk: You may be unable to liquidate a position at your preferred price.\n'
+      'Cybersecurity: Digital assets are subject to theft and hacking risks.',
+),
+              
               _buildLegalSection(
-                title: '3. Account Security',
+                title: '4. User Account Security',
                 content:
-                    'To use certain features of the Platform, you must register for an account. You agree to provide accurate, current, and complete information during the registration process. You are solely responsible for maintaining the confidentiality of your account credentials and for all activities that occur under your account. Notify us immediately of any unauthorized use or security breach.',
+                    'When you create an account, you agree to maintain the security of your password and accept all risks of unauthorized access to your account. You are responsible for all activities that occur under your Danjones App account.',
               ),
               
               _buildLegalSection(
-                title: '4. Risk Disclosure',
+                title: '5. Prohibited',
                 content:
-                    'Trading digital assets involves significant risk. Prices can fluctuate wildly on any given day, and you may lose the entire value of your investment. You represent that you have sufficient knowledge and experience to understand the risks involved in trading cryptocurrencies, and you agree to bear all responsibility for your trading activities.',
+                    'You may not use the Platform for any illegal activity, including money laundering, terrorist financing, or any activity that violates any law, statute, ordinance, or regulation. Market manipulation, including wash trading and spoofing, is strictly prohibited and will result in immediate account termination and reporting to relevant authorities.',
               ),
               
-              _buildLegalSection(
-                title: '5. Prohibited Activities',
-                content:
-                    'You agree not to engage in any prohibited activities on the Platform, including but not limited to: market manipulation, money laundering, terrorist financing, using automated bots to access the services, or attempting to breach our security infrastructure. Violations may result in immediate account termination and legal action.',
-              ),
-              
-              _buildLegalSection(
-                title: '6. Limitation of Liability',
-                content:
-                    'In no event shall Danjones, its directors, employees, or agents be liable for any indirect, incidental, special, or consequential damages arising out of or in connection with your use of the Platform. The services are provided on an "as is" and "as available" basis without any warranties of any kind.',
-              ),
+              const SizedBox(height: 12),
+
+Center(
+  child: Column(
+    children: [
+      Text(
+        '© 2026 Danjones',
+        style: GoogleFonts.outfit(
+          color: Colors.white38,
+          fontSize: 13,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      const SizedBox(height: 6),
+      Text(
+        'Secure Nigerian Crypto Trading.',
+        style: GoogleFonts.outfit(
+          color: Colors.white38,
+          fontSize: 13,
+        ),
+      ),
+    ],
+  ),
+),
+
+const SizedBox(height: 30),
+        
             ],
           ),
         ),
@@ -88,7 +113,7 @@ class TermsScreen extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 20.0),
       padding: const EdgeInsets.all(20.0),
       decoration: BoxDecoration(
-        color: const Color(0xFF1E1E1E),
+        color: const Color(0xFF1C1D21),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.white10),
       ),

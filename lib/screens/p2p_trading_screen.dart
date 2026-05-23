@@ -32,8 +32,8 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> {
     });
   }
 
-  /// Filter ads by selected token and active status only.
-  /// Both Buy and Sell tabs currently show the same active ad pool.
+  // Filter ads by selected token and active status only.
+  // Both Buy and Sell tabs currently show the same active ad pool.
   List<P2PAd> _filterAds(List<P2PAd> all) {
     return all.where((ad) {
       return ad.currencySymbol.toUpperCase() == _selectedToken.toUpperCase() &&

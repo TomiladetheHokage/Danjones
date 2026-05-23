@@ -27,7 +27,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+          padding: const EdgeInsets.fromLTRB(24, 16, 24, 50),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -40,41 +40,73 @@ class PrivacyPolicyScreen extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               
-              _buildLegalSection(
-                title: '1. Information We Collect',
-                content:
-                    'We collect information you provide directly to us when registering for an account, verifying your identity, making deposits or withdrawals, or communicating with customer support. This information may include your name, email address, phone number, government-issued identification, and financial transaction details.',
-              ),
+     _buildLegalSection(
+  title: '1. Information We Collect',
+  content:
+      'Danjones App collects various types of information to provide and improve our services. This includes personal identification information, such as your name, email address, and government-issued identification for KYC compliance.\n\n'
+      '- Personal Identification Data (Full Name, DOB, Address)\n'
+      '- Financial Information (Bank accounts, Wallet addresses)\n'
+      '- Transactional Data (Trading history, deposits, withdrawals)\n'
+      '- Technical Logs (IP addresses, device IDs, browser types)',
+),
+              
+            _buildLegalSection(
+  title: '2. How We Use Your Information',
+  content:
+      'The data we collect is utilized to facilitate services, maintain security protocols, and ensure regulatory adherence.\n\n'
+      'Your information allows us to:\n'
+      '- Identity Verification: Mandatory KYC/AML processing for all users\n'
+      '- Fraud Prevention: Real-time monitoring of suspicious activity',
+),
+              
+       _buildLegalSection(
+  title: '3. Data Security',
+  content:
+      'We implement industry-leading security measures to protect your data.\n\n'
+      '- AES-256 encryption for stored data\n'
+      '- TLS protocols for data in transit\n'
+      '- Secure hashing for sensitive identifiers\n\n'
+      'No personal data is stored in plain text.',
+),
+              
+      _buildLegalSection(
+  title: '4. Sharing of Information',
+  content:
+      'We do not sell your personal data to third parties. Information may only be shared with service providers under strict confidentiality agreements or as required by law enforcement agencies in compliance with legal warrants.',
+),
               
               _buildLegalSection(
-                title: '2. How We Use Your Information',
+                title: '5. Prohibited',
                 content:
-                    'We use the information we collect to: provide, maintain, and improve our services; process transactions; verify your identity to prevent fraud and comply with legal requirements; send you technical updates, support messages, and promotional offers; and monitor and analyze trends and usage of our Platform.',
+                    'You may not use the Platform for any illegal activity, including money laundering, terrorist financing, or any activity that violates any law, statute, ordinance, or regulation. Market manipulation, including wash trading and spoofing, is strictly prohibited and will result in immediate account termination and reporting to relevant authorities.',
               ),
               
-              _buildLegalSection(
-                title: '3. Information Sharing',
-                content:
-                    'We do not sell your personal information. We may share your information with trusted third-party service providers who assist us in operating our Platform, conducting our business, or serving our users, provided those parties agree to keep this information confidential and comply with applicable privacy laws.',
-              ),
-              
-              _buildLegalSection(
-                title: '4. Data Security',
-                content:
-                    'We implement robust security measures, including encryption and multi-factor authentication, to protect your personal information from unauthorized access, alteration, disclosure, or destruction. However, no electronic transmission or storage system is 100% secure, and we cannot guarantee absolute security.',
-              ),
-              
-              _buildLegalSection(
-                title: '5. Your Rights and Choices',
-                content:
-                    'Depending on your location, you may have the right to access, correct, delete, or limit the use of your personal data. You can manage your account settings within the app to update your details or contact our support team to submit data request inquiries.',
-              ),
-              
-              _buildLegalSection(
-                title: '6. Changes to this Policy',
-                content:
-                    'We may update this Privacy Policy from time to time to reflect changes in our practices or for legal reasons. We will notify you of any material changes by posting the new policy on this page and updating the "Last Updated" date.',
-              ),
+           
+                            
+              const SizedBox(height: 12),
+
+Center(
+  child: Column(
+    children: [
+      Text(
+        '© 2026 Danjones',
+        style: GoogleFonts.outfit(
+          color: Colors.white38,
+          fontSize: 13,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      const SizedBox(height: 6),
+      Text(
+        'Secure Nigerian Crypto Trading.',
+        style: GoogleFonts.outfit(
+          color: Colors.white38,
+          fontSize: 13,
+        ),
+      ),
+    ],
+  ),
+),
             ],
           ),
         ),
@@ -88,7 +120,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 20.0),
       padding: const EdgeInsets.all(20.0),
       decoration: BoxDecoration(
-        color: const Color(0xFF1E1E1E),
+        color: const Color(0xFF1C1D21),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.white10),
       ),

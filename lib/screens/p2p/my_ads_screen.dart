@@ -20,7 +20,7 @@ class _MyAdsScreenState extends State<MyAdsScreen> {
     _adsFuture = _fetchMyAds();
   }
 
-  /// Filters the full ads list to only the current user's ads.
+  // Filters the full ads list to only the current user's ads.
   Future<List<P2PAd>> _fetchMyAds() async {
     final allAds = await ApiService.getP2pAds();
     // The backend /p2p/ads scopes to the user's own ads via the auth token

@@ -9,6 +9,7 @@ import 'auth/login_screen.dart';
 import 'trade_screen.dart';
 import 'p2p/my_ads_screen.dart';
 import 'kyc/verification_center_screen.dart';
+import 'legal/about_legal_screen.dart';
 import '../services/api_service.dart';
 import '../services/data_store.dart';
 import '../models/user_profile.dart';
@@ -305,6 +306,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 _buildMenuItem(
                   imagePath: 'assets/icons/about.png',
                   title: 'About & Legal',
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const AboutLegalScreen()),
+                  ),
                 ),
               ]),
               

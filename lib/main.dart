@@ -40,6 +40,9 @@ class DanJonesApp extends StatelessWidget {
           seedColor: const Color(0xFFE4B53E),
           brightness: Brightness.dark,
         ),
+        appBarTheme: const AppBarTheme(
+          scrolledUnderElevation: 0,
+        ),
         textTheme: GoogleFonts.outfitTextTheme(
           ThemeData.dark().textTheme,
         ),

@@ -22,8 +22,8 @@ class _MarketAssetScreenState extends State<MarketAssetScreen> {
   // ── Timeframe config ──────────────────────────────────────────────────────
   static const List<String> _timeframes = ['1m', '5m', '15m', '1h', '1d'];
 
-  /// Maps each UI timeframe label to the CoinGecko `days` parameter.
-  /// CoinGecko OHLC granularity: days=1 → 30-min, days=7/30 → 4-hour candles.
+  // Maps each UI timeframe label to the CoinGecko `days` parameter.
+  // CoinGecko OHLC granularity: days=1 → 30-min, days=7/30 → 4-hour candles.
   static const Map<String, int> _tfToDays = {
     '1m': 1,
     '5m': 1,

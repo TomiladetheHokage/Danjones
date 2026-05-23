@@ -60,7 +60,7 @@ class _P2POrderConfirmationScreenState extends State<P2POrderConfirmationScreen>
     super.dispose();
   }
 
-  /// Returns the user's real wallet balance for the traded coin.
+  // Returns the user's real wallet balance for the traded coin.
   String _userBalance() {
     final wallets = DataStore.instance.dashboard.value?.wallets ?? [];
     final match = wallets.cast<dynamic>().firstWhere(

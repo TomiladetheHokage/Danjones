@@ -53,7 +53,7 @@ class ApiService {
     await _storage.delete(key: 'auth_token');
   }
 
-  /// Helper for detailed error handling as requested
+  // Helper for detailed error handling as requested
   static Future<http.Response> _makeRequest(
     Future<http.Response> Function() requestFn, {
     String? requestName,
@@ -453,7 +453,7 @@ class ApiService {
   // WALLET CREATION
   // ==========================================
 
-  /// Creates a wallet for the given currency. Returns the new Wallet object.
+  // Creates a wallet for the given currency. Returns the new Wallet object.
   static Future<Wallet> createWallet({required int currencyId}) async {
     final response = await _makeRequest(
       () => http.post(
@@ -480,11 +480,47 @@ class ApiService {
   }
 
   // ==========================================
+  // SEND FEE
+  // ==========================================
+
+  // Returns fee info for a withdrawal. Response includes fee, fee_usd, rate_usd, is_high_fee, max_fee_usd.
+  static Future<Map<String, dynamic>> getSendFee({
+    required int currencyId,
+    required double amount,
+  }) async {
+    final uri = Uri.parse('$baseUrl/wallets/send-fee').replace(
+      queryParameters: {
+        'currency_id': currencyId.toString(),
+        'amount': amount.toString(),
+      },
+    );
+
+    final response = await _makeRequest(
+      () => http.get(
+        uri,
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $authToken',
+        },
+      ),
+      requestName: 'GET_SEND_FEE',
+    );
+
+    final data = jsonDecode(response.body);
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return data as Map<String, dynamic>;
+    } else {
+      final errMsg = data['message'] ?? data['error'] ?? 'Failed to fetch fee (${response.statusCode})';
+      throw Exception(errMsg);
+    }
+  }
+
+  // ==========================================
   // FLUTTERWAVE DEPOSIT
   // ==========================================
 
-  /// Create a virtual account for deposit
-  /// NOTE: This endpoint typically requires a Secret Key. If public key fails, use Secret Key.
+  // Create a virtual account for deposit
+  // NOTE: This endpoint typically requires a Secret Key. If public key fails, use Secret Key.
   static Future<Map<String, dynamic>> initiateFlutterwaveDeposit({
     required String email,
     required double amount,
@@ -523,7 +559,7 @@ class ApiService {
     }
   }
 
-  /// Verify deposit on our backend
+  // Verify deposit on our backend
   static Future<Map<String, dynamic>> verifyFlutterwaveDeposit({
     required String reference,
   }) async {
