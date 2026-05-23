@@ -27,6 +27,6 @@ List<OnboardingModel> onboardingData = [
   OnboardingModel(
     title: "Swift KYC Verification",
     description: "Safety first. Verify your identity instantly to start trading securely. Our streamlined process gets you onboarded in minutes.",
-    imagePath: "assets/images/Kyc-registration.png",
+    imagePath: "assets/images/Kyc.png",
   ),
 ];
