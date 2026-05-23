@@ -90,93 +90,17 @@ class _SecurityVerificationScreenState
   }
 
   // ── API: Send / Resend OTP ────────────────────────────────────────────────
-  // Future<void> _sendOtp() async {
-  //   if (_isSending) return;
-  //   setState(() => _isSending = true);
-
-  //   try {
-  //     final response = await http
-  //         .post(
-  //           Uri.parse('${ApiService.baseUrl}/resend-otp'),
-  //           headers: {
-  //             'Accept': 'application/json',
-  //             'Authorization': 'Bearer ${ApiService.authToken}',
-  //           },
-  //         )
-  //         .timeout(const Duration(seconds: 15));
-
-  //     if (!mounted) return;
-
-  //     final data = _tryDecode(response.body);
-  //     final ok = response.statusCode >= 200 && response.statusCode < 300;
-
-  //     if (ok) {
-  //       setState(() => _codeSent = true);
-  //       _startTimer();
-  //       Future.delayed(const Duration(milliseconds: 300), () {
-  //         if (mounted) _focusNode.requestFocus();
-  //       });
-  //     } else {
-  //       _showError(data?['message'] ?? 'Failed to send code. Please try again.');
-  //     }
-  //   } on Exception catch (e) {
-  //     if (mounted) _showError(_friendlyError(e));
-  //   } finally {
-  //     if (mounted) setState(() => _isSending = false);
-  //   }
-  // }
-
-  // // ── API: Verify OTP ───────────────────────────────────────────────────────
-  // Future<void> _verifyOtp() async {
-  //   if (_isVerifying || !_otpComplete) return;
-  //   setState(() => _isVerifying = true);
-
-  //   try {
-  //     final request = http.MultipartRequest(
-  //       'POST',
-  //       Uri.parse('${ApiService.baseUrl}/verify-otp'),
-  //     )
-  //       ..headers['Accept'] = 'application/json'
-  //       ..headers['Authorization'] = 'Bearer ${ApiService.authToken}'
-  //       ..fields['otp'] = _otpDigits.join();
-
-  //     final streamed =
-  //         await request.send().timeout(const Duration(seconds: 15));
-  //     final response = await http.Response.fromStream(streamed);
-
-  //     if (!mounted) return;
-
-  //     final data = _tryDecode(response.body);
-  //     final ok = response.statusCode >= 200 && response.statusCode < 300;
-
-  //     if (ok) {
-  //       _countdownTimer?.cancel();
-  //       _showSuccessDialog();
-  //     } else {
-  //       _showError(
-  //           data?['message'] ?? 'Invalid or expired code. Please try again.');
-  //     }
-  //   } on Exception catch (e) {
-  //     if (mounted) _showError(_friendlyError(e));
-  //   } finally {
-  //     if (mounted) setState(() => _isVerifying = false);
-  //   }
-  // }
-
   Future<void> _sendOtp() async {
-  if (_isSending) return;
+    if (_isSending) return;
+    setState(() => _isSending = true);
 
-  setState(() => _isSending = true);
-
-  try {
-    if (!testMode) {
+    try {
       final response = await http
           .post(
             Uri.parse('${ApiService.baseUrl}/resend-otp'),
             headers: {
               'Accept': 'application/json',
-              'Authorization':
-                  'Bearer ${ApiService.authToken}',
+              'Authorization': 'Bearer ${ApiService.authToken}',
             },
           )
           .timeout(const Duration(seconds: 15));
@@ -184,100 +108,177 @@ class _SecurityVerificationScreenState
       if (!mounted) return;
 
       final data = _tryDecode(response.body);
+      final ok = response.statusCode >= 200 && response.statusCode < 300;
 
-      final ok =
-          response.statusCode >= 200 &&
-          response.statusCode < 300;
-
-      if (!ok) {
-        _showError(
-          data?['message'] ??
-              'Failed to send code. Please try again.',
-        );
-        return;
+      if (ok) {
+        setState(() => _codeSent = true);
+        _startTimer();
+        Future.delayed(const Duration(milliseconds: 300), () {
+          if (mounted) _focusNode.requestFocus();
+        });
+      } else {
+        _showError(data?['message'] ?? 'Failed to send code. Please try again.');
       }
-    }
-
-    // TEST MODE SUCCESS
-    setState(() => _codeSent = true);
-
-    _startTimer();
-
-    Future.delayed(
-      const Duration(milliseconds: 300),
-      () {
-        if (mounted) {
-          _focusNode.requestFocus();
-        }
-      },
-    );
-  } on Exception catch (e) {
-    if (mounted) {
-      _showError(_friendlyError(e));
-    }
-  } finally {
-    if (mounted) {
-      setState(() => _isSending = false);
+    } on Exception catch (e) {
+      if (mounted) _showError(_friendlyError(e));
+    } finally {
+      if (mounted) setState(() => _isSending = false);
     }
   }
-}
 
+  // ── API: Verify OTP ───────────────────────────────────────────────────────
+  Future<void> _verifyOtp() async {
+    if (_isVerifying || !_otpComplete) return;
+    setState(() => _isVerifying = true);
 
-Future<void> _verifyOtp() async {
-  if (_isVerifying || !_otpComplete) return;
-
-  setState(() => _isVerifying = true);
-
-  try {
-    if (!testMode) {
+    try {
       final request = http.MultipartRequest(
         'POST',
         Uri.parse('${ApiService.baseUrl}/verify-otp'),
       )
         ..headers['Accept'] = 'application/json'
-        ..headers['Authorization'] =
-            'Bearer ${ApiService.authToken}'
+        ..headers['Authorization'] = 'Bearer ${ApiService.authToken}'
         ..fields['otp'] = _otpDigits.join();
 
       final streamed =
-          await request.send().timeout(
-                const Duration(seconds: 15),
-              );
-
-      final response =
-          await http.Response.fromStream(streamed);
+          await request.send().timeout(const Duration(seconds: 15));
+      final response = await http.Response.fromStream(streamed);
 
       if (!mounted) return;
 
       final data = _tryDecode(response.body);
+      final ok = response.statusCode >= 200 && response.statusCode < 300;
 
-      final ok =
-          response.statusCode >= 200 &&
-          response.statusCode < 300;
-
-      if (!ok) {
+      if (ok) {
+        _countdownTimer?.cancel();
+        _showSuccessDialog();
+      } else {
         _showError(
-          data?['message'] ??
-              'Invalid or expired code.',
-        );
-        return;
+            data?['message'] ?? 'Invalid or expired code. Please try again.');
       }
-    }
-
-    // TEST MODE SUCCESS
-    _countdownTimer?.cancel();
-
-    _showSuccessDialog();
-  } on Exception catch (e) {
-    if (mounted) {
-      _showError(_friendlyError(e));
-    }
-  } finally {
-    if (mounted) {
-      setState(() => _isVerifying = false);
+    } on Exception catch (e) {
+      if (mounted) _showError(_friendlyError(e));
+    } finally {
+      if (mounted) setState(() => _isVerifying = false);
     }
   }
-}
+
+//TEST!!!!!!!!!
+//   Future<void> _sendOtp() async {
+//   if (_isSending) return;
+
+//   setState(() => _isSending = true);
+
+//   try {
+//     if (!testMode) {
+//       final response = await http
+//           .post(
+//             Uri.parse('${ApiService.baseUrl}/resend-otp'),
+//             headers: {
+//               'Accept': 'application/json',
+//               'Authorization':
+//                   'Bearer ${ApiService.authToken}',
+//             },
+//           )
+//           .timeout(const Duration(seconds: 15));
+
+//       if (!mounted) return;
+
+//       final data = _tryDecode(response.body);
+
+//       final ok =
+//           response.statusCode >= 200 &&
+//           response.statusCode < 300;
+
+//       if (!ok) {
+//         _showError(
+//           data?['message'] ??
+//               'Failed to send code. Please try again.',
+//         );
+//         return;
+//       }
+//     }
+
+//     // TEST MODE SUCCESS
+//     setState(() => _codeSent = true);
+
+//     _startTimer();
+
+//     Future.delayed(
+//       const Duration(milliseconds: 300),
+//       () {
+//         if (mounted) {
+//           _focusNode.requestFocus();
+//         }
+//       },
+//     );
+//   } on Exception catch (e) {
+//     if (mounted) {
+//       _showError(_friendlyError(e));
+//     }
+//   } finally {
+//     if (mounted) {
+//       setState(() => _isSending = false);
+//     }
+//   }
+// }
+
+
+// Future<void> _verifyOtp() async {
+//   if (_isVerifying || !_otpComplete) return;
+
+//   setState(() => _isVerifying = true);
+
+//   try {
+//     if (!testMode) {
+//       final request = http.MultipartRequest(
+//         'POST',
+//         Uri.parse('${ApiService.baseUrl}/verify-otp'),
+//       )
+//         ..headers['Accept'] = 'application/json'
+//         ..headers['Authorization'] =
+//             'Bearer ${ApiService.authToken}'
+//         ..fields['otp'] = _otpDigits.join();
+
+//       final streamed =
+//           await request.send().timeout(
+//                 const Duration(seconds: 15),
+//               );
+
+//       final response =
+//           await http.Response.fromStream(streamed);
+
+//       if (!mounted) return;
+
+//       final data = _tryDecode(response.body);
+
+//       final ok =
+//           response.statusCode >= 200 &&
+//           response.statusCode < 300;
+
+//       if (!ok) {
+//         _showError(
+//           data?['message'] ??
+//               'Invalid or expired code.',
+//         );
+//         return;
+//       }
+//     }
+
+//     // TEST MODE SUCCESS
+//     _countdownTimer?.cancel();
+
+//     _showSuccessDialog();
+//   } on Exception catch (e) {
+//     if (mounted) {
+//       _showError(_friendlyError(e));
+//     }
+//   } finally {
+//     if (mounted) {
+//       setState(() => _isVerifying = false);
+//     }
+//   }
+//}
 
 
   // ── Helpers ───────────────────────────────────────────────────────────────

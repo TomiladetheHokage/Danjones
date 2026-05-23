@@ -83,56 +83,60 @@ class _SignUpScreenState extends State<SignUpScreen> {
       _isLoading = true;
     });
 
-    // try {
-    //   await ApiService.register(
-    //     name: _nameController.text.trim(),
-    //     email: _emailController.text.trim(),
-    //     password: _passwordController.text,
-    //     phone: _phoneController.text.trim(),
-    //     refCode: _refCodeController.text.trim().isEmpty ? null : _refCodeController.text.trim(),
-    //   );
-    //   if (!mounted) return;
-    //   _showSuccessDialog();
-    // } 
-    // catch (e) {
-    //   if (!mounted) return;
-    //   _showErrorDialog(e.toString().replaceAll('Exception: ', ''));
-    // } finally {
-    //   if (mounted) {
-    //     setState(() {
-    //       _isLoading = false;
-    //     });
-    //   }
-    // }
     try {
-  const bool testMode = true;
+      await ApiService.register(
+        name: _nameController.text.trim(),
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+        phone: _phoneController.text.trim(),
+        refCode: _refCodeController.text.trim().isEmpty ? null : _refCodeController.text.trim(),
+      );
+      if (!mounted) return;
+      _showSuccessDialog();
+    } 
+    catch (e) {
+      if (!mounted) return;
+      _showErrorDialog(e.toString().replaceAll('Exception: ', ''));
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
 
-  if (!testMode) {
-    await ApiService.register(
-      name: _nameController.text.trim(),
-      email: _emailController.text.trim(),
-      password: _passwordController.text,
-      phone: _phoneController.text.trim(),
-      refCode: _refCodeController.text.trim().isEmpty
-          ? null
-          : _refCodeController.text.trim(),
-    );
-  } else {
-    await Future.delayed(const Duration(seconds: 1));
-  }
 
-  if (!mounted) return;
-  _showSuccessDialog();
-} catch (e) {
-  if (!mounted) return;
-  _showErrorDialog(e.toString().replaceAll('Exception: ', ''));
-} finally {
-  if (mounted) {
-    setState(() {
-      _isLoading = false;
-    });
-  }
-}
+
+
+//     try {
+//   const bool testMode = true;
+
+//   if (!testMode) {
+//     await ApiService.register(
+//       name: _nameController.text.trim(),
+//       email: _emailController.text.trim(),
+//       password: _passwordController.text,
+//       phone: _phoneController.text.trim(),
+//       refCode: _refCodeController.text.trim().isEmpty
+//           ? null
+//           : _refCodeController.text.trim(),
+//     );
+//   } else {
+//     await Future.delayed(const Duration(seconds: 1));
+//   }
+
+//   if (!mounted) return;
+//   _showSuccessDialog();
+// } catch (e) {
+//   if (!mounted) return;
+//   _showErrorDialog(e.toString().replaceAll('Exception: ', ''));
+// } finally {
+//   if (mounted) {
+//     setState(() {
+//       _isLoading = false;
+//     });
+//   }
+// }
   }
 
   void _showSuccessDialog() {

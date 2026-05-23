@@ -8,6 +8,7 @@ import '../models/crypto_asset.dart';
 import 'deposit_screen.dart';
 import 'main_shell.dart';
 import 'home_and_market/market_asset_screen.dart';
+import 'withdraw/withdraw_select_coin_screen.dart';
 
 class AssetDetailsScreen extends StatefulWidget {
   final Wallet wallet;
@@ -158,7 +159,13 @@ class _AssetDetailsScreenState extends State<AssetDetailsScreen> {
         'assets/icons/withdraw.png',
         'Withdraw',
         onTap: () {
-          // Withdraw action here
+          Navigator.of(context, rootNavigator: true).push(
+            MaterialPageRoute(
+              builder: (_) => WithdrawSelectCoinScreen(
+                preselected: widget.wallet,
+              ),
+            ),
+          );
         },
       ),
 

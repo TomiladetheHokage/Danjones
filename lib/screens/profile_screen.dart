@@ -268,7 +268,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const SizedBox(height: 16),
               _buildMenuGroup([
                 _buildMenuItem(
-                  imagePath: 'assets/icons/refferral.png',
+                  imagePath: 'assets/icons/refferal.png',
                   title: 'Referral & Rewards',
                   subtitle: 'Invite friends, earn up to 40%',
                   onTap: () {

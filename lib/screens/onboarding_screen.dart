@@ -103,7 +103,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                             flex: 2,
                             child: Padding(
                               padding: const EdgeInsets.fromLTRB(
-                                  32, 10, 32, 0),
+                                  32, 32, 32, 0),
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.start,
                                 children: [
@@ -210,7 +210,7 @@ Widget _buildMockup(int index) {
       children: [
         /// BACK CARD (More inside now)
         Positioned(
-          right: 15,   // was negative — now inside screen
+          right: 5,
           top: 60,
           child: Opacity(
             opacity: 0.9,

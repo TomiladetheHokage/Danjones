@@ -19,13 +19,25 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   }
 
   void _simulateLoading() async {
-    // Simulating a 3-second loading bar
+    // Precache onboarding images in background — errors are swallowed so
+    // a missing asset never blocks navigation
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final imagesToCache = [
+        'assets/images/Home.png',
+        'assets/images/p2p.png',
+        'assets/images/Kyc-registration.png',
+        'assets/images/onboarding_back_1.png',
+      ];
+      for (final path in imagesToCache) {
+        precacheImage(AssetImage(path), context).catchError((_) {});
+      }
+    });
+
+    // Progress bar — ~3 seconds
     for (int i = 0; i <= 100; i++) {
       await Future.delayed(const Duration(milliseconds: 30));
       if (mounted) {
-        setState(() {
-          _progressValue = i / 100;
-        });
+        setState(() => _progressValue = i / 100);
       }
     }
     _navigateToOnboarding();
