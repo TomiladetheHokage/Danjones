@@ -5,7 +5,7 @@ import '../theme/app_theme.dart';
 import '../widgets/sparkline_chart.dart';
 import '../services/crypto_service.dart';
 import '../models/crypto_asset.dart';
-import 'deposit_screen.dart';
+import 'deposit_select_coin_screen.dart';
 import 'main_shell.dart';
 import 'home_and_market/market_asset_screen.dart';
 import 'withdraw/withdraw_select_coin_screen.dart';
@@ -147,7 +147,7 @@ class _AssetDetailsScreenState extends State<AssetDetailsScreen> {
         onTap: () {
           Navigator.of(context, rootNavigator: true).push(
             MaterialPageRoute(
-              builder: (context) => const DepositScreen(),
+              builder: (context) => const DepositSelectCoinScreen(),
             ),
           );
         },

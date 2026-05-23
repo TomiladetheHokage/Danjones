@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutterwave_standard/flutterwave.dart';
-import '../models/wallet.dart';
 import '../theme/app_theme.dart';
 import '../services/api_service.dart';
 import '../services/data_store.dart';
-import 'receive_screen.dart';
+import 'deposit_select_coin_screen.dart';
 
 class DepositScreen extends StatefulWidget {
   const DepositScreen({super.key});
@@ -16,7 +14,6 @@ class DepositScreen extends StatefulWidget {
 
 class _DepositScreenState extends State<DepositScreen> {
   bool _isCryptoTab = true;
-  String _searchQuery = '';
   
   // Fiat Form State
   String _selectedMethod = 'Bank Transfer';
@@ -346,164 +343,25 @@ class _DepositScreenState extends State<DepositScreen> {
   }
 
   // ==========================================
-  // CRYPTO TAB — reads from DataStore wallets (no extra API call)
+  // CRYPTO TAB — redirects to full coin selector
   // ==========================================
   Widget _buildCryptoView() {
-    final wallets = DataStore.instance.dashboard.value?.wallets ?? [];
-    final cryptoWallets = wallets
-        .where((w) => w.currency.symbol.toUpperCase() != 'NGN')
-        .where((w) =>
-            w.currency.symbol.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-            w.currency.name.toLowerCase().contains(_searchQuery.toLowerCase()))
-        .toList();
+    // Push the full coin list immediately and pop back to fiat tab if user
+    // navigates back. We use a post-frame callback so the tab switch animation
+    // completes before the push.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_isCryptoTab) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const DepositSelectCoinScreen()),
+      ).then((_) {
+        // When user comes back, switch to fiat tab so the crypto tab doesn't
+        // immediately push again.
+        if (mounted) setState(() => _isCryptoTab = false);
+      });
+    });
 
-    if (wallets.isEmpty) {
-      return Center(
-        child: Text(
-          'No wallets found',
-          style: AppTheme.inter(color: Colors.white38, fontSize: 14),
-        ),
-      );
-    }
-
-    return Column(
-      children: [
-        _buildSearchBar(),
-        const SizedBox(height: 8),
-        Expanded(
-          child: ListView.builder(
-            physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.only(bottom: 24),
-            itemCount: cryptoWallets.length,
-            itemBuilder: (context, index) {
-              final wallet = cryptoWallets[index];
-              return _buildWalletListItem(wallet);
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildWalletListItem(Wallet wallet) {
-    final imageUrl = wallet.currency.fullImageUrl;
-    final symbol = wallet.currency.symbol.toUpperCase();
-    final name = wallet.currency.name;
-
-    return InkWell(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => ReceiveScreen(wallet: wallet)),
-        );
-      },
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-        child: Row(
-          children: [
-            SizedBox(
-              width: 40,
-              height: 40,
-              child: ClipOval(
-                child: imageUrl.startsWith('http')
-                    ? CachedNetworkImage(
-                        imageUrl: imageUrl,
-                        width: 40,
-                        height: 40,
-                        fit: BoxFit.contain,
-                        placeholder: (context, url) => Container(
-                          color: Colors.white.withValues(alpha: 0.05),
-                          child: const Center(
-                            child: SizedBox(
-                              width: 14,
-                              height: 14,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Color(0xFFE4B53E),
-                              ),
-                            ),
-                          ),
-                        ),
-                        errorWidget: (context, url, error) => const Icon(
-                          Icons.token,
-                          color: Colors.white24,
-                          size: 24,
-                        ),
-                      )
-                    : const Icon(Icons.token, color: Colors.white24, size: 24),
-              ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    symbol,
-                    style: AppTheme.inter(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    name,
-                    style: AppTheme.inter(fontSize: 12, color: Colors.white38),
-                  ),
-                ],
-              ),
-            ),
-            Icon(
-              Icons.chevron_right_rounded,
-              color: Colors.white.withValues(alpha: 0.2),
-              size: 20,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSearchBar() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Container(
-        height: 50,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        decoration: BoxDecoration(
-          color: const Color(0xFF1A1A1A),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.white.withOpacity(0.05)),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: TextField(
-                cursorColor: Colors.white24,
-                style: AppTheme.inter(color: Colors.white, fontSize: 14),
-                onChanged: (value) => setState(() => _searchQuery = value),
-                decoration: InputDecoration(
-                  hintText: 'Search Token',
-                  hintStyle: AppTheme.inter(
-                    color: Colors.white.withOpacity(0.2),
-                    fontSize: 14,
-                  ),
-                  border: InputBorder.none,
-                  isDense: true,
-                  contentPadding: EdgeInsets.zero,
-                ),
-              ),
-            ),
-            Icon(
-              Icons.search,
-              color: Colors.white.withOpacity(0.2),
-              size: 24,
-            ),
-          ],
-        ),
-      ),
-    );
+    return const SizedBox.shrink();
   }
 
   // ==========================================

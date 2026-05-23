@@ -450,6 +450,36 @@ class ApiService {
   }
 
   // ==========================================
+  // WALLET CREATION
+  // ==========================================
+
+  /// Creates a wallet for the given currency. Returns the new Wallet object.
+  static Future<Wallet> createWallet({required int currencyId}) async {
+    final response = await _makeRequest(
+      () => http.post(
+        Uri.parse('$baseUrl/wallets/create'),
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $authToken',
+        },
+        body: jsonEncode({'currency_id': currencyId}),
+      ),
+      requestName: 'CREATE_WALLET',
+    );
+
+    final data = jsonDecode(response.body);
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      final walletJson = data['wallet'] as Map<String, dynamic>?;
+      if (walletJson == null) throw Exception('Wallet data missing in response.');
+      return Wallet.fromJson(walletJson);
+    } else {
+      final errMsg = data['message'] ?? data['error'] ?? 'Failed to create wallet (${response.statusCode})';
+      throw Exception(errMsg);
+    }
+  }
+
+  // ==========================================
   // FLUTTERWAVE DEPOSIT
   // ==========================================
 

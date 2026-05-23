@@ -26,7 +26,7 @@ class SecurityVerificationScreen extends StatefulWidget {
 class _SecurityVerificationScreenState
     extends State<SecurityVerificationScreen> {
   // ── UI state ──────────────────────────────────────────────────────────────
-  bool _codeSent = false;
+  bool _codeSent = true;
   bool _isSending = false;
   bool _isVerifying = false;
   static const bool testMode = true;
@@ -45,6 +45,12 @@ class _SecurityVerificationScreenState
   bool get _otpComplete => _otpDigits.every((d) => d.isNotEmpty);
 
   // ── Lifecycle ─────────────────────────────────────────────────────────────
+  @override
+  void initState() {
+    super.initState();
+    _startTimer();
+  }
+
   @override
   void dispose() {
     _countdownTimer?.cancel();
@@ -278,7 +284,7 @@ class _SecurityVerificationScreenState
 //       setState(() => _isVerifying = false);
 //     }
 //   }
-//}
+// }
 
 
   // ── Helpers ───────────────────────────────────────────────────────────────
@@ -328,10 +334,7 @@ class _SecurityVerificationScreenState
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
+        automaticallyImplyLeading: false,
       ),
       body: SafeArea(
         child: SingleChildScrollView(

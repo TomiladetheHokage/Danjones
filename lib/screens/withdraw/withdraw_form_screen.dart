@@ -27,25 +27,6 @@ class _WithdrawFormScreenState extends State<WithdrawFormScreen> {
 
   bool _isSubmitting = false;
 
-  // Daily limit — static for now, replace with API when available
-  static const double _dailyLimit = 5000000;
-
-  // Used today — derived from wallet's current USD balance as a proxy.
-  // Replace with a real /wallets/withdrawals/today endpoint when available.
-  double get _usedToday {
-    final wallets = DataStore.instance.dashboard.value?.wallets ?? [];
-    // Sum all crypto wallet USD balances as a rough proxy for activity
-    final total = wallets.fold<double>(
-      0,
-      (sum, w) => sum + w.balanceUsd.toDouble(),
-    );
-    // Cap at daily limit so the bar never overflows
-    return total.clamp(0, _dailyLimit);
-  }
-
-  double get _remainingLimit =>
-      (_dailyLimit - _usedToday).clamp(0, _dailyLimit);
-
   double get _balance => double.tryParse(widget.wallet.balance) ?? 0.0;
 
   double get _amount =>
@@ -212,9 +193,6 @@ class _WithdrawFormScreenState extends State<WithdrawFormScreen> {
               const SizedBox(height: 20),
 
               _buildSummaryCard(symbol),
-              const SizedBox(height: 20),
-
-              _buildLimitsCard(),
               const SizedBox(height: 20),
 
               _buildSecurityNote(),
@@ -462,46 +440,6 @@ class _WithdrawFormScreenState extends State<WithdrawFormScreen> {
           ),
         ),
       ],
-    );
-  }
-
-  // ── Limits card ──────────────────────────────────────────────────────────────
-  Widget _buildLimitsCard() {
-    final used = _usedToday;
-    final remaining = _remainingLimit;
-    final progress = (used / _dailyLimit).clamp(0.0, 1.0);
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF141416),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
-      ),
-      child: Column(
-        children: [
-          _summaryRow('Daily Limit', '₦${_formatMoney(_dailyLimit)}'),
-          const SizedBox(height: 10),
-          _summaryRow('Used Today', '₦${_formatMoney(used)}'),
-          const SizedBox(height: 10),
-          _summaryRow(
-            'Remaining',
-            '₦${_formatMoney(remaining)}',
-            valueColor: const Color(0xFFE4B53E),
-          ),
-          const SizedBox(height: 12),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: progress,
-              backgroundColor: Colors.white.withValues(alpha: 0.08),
-              valueColor:
-                  const AlwaysStoppedAnimation<Color>(Color(0xFFE4B53E)),
-              minHeight: 6,
-            ),
-          ),
-        ],
-      ),
     );
   }
 

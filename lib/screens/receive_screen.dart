@@ -279,67 +279,33 @@ class ReceiveScreen extends StatelessWidget {
     );
   }
 
-  // ── Bottom buttons ────────────────────────────────────────────────────────
+  // ── Bottom button ─────────────────────────────────────────────────────────
   Widget _buildBottomButtons(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 0, 24, 28),
-      child: Row(
-        children: [
-          // Share — outlined
-          Expanded(
-            child: GestureDetector(
-              onTap: () {
-                // Share action — wire up share_plus if needed
-              },
-              child: Container(
-                height: 54,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(30),
-                  border: Border.all(
-                    color: const Color(0xFFE4B53E).withValues(alpha: 0.6),
-                  ),
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  'Share',
-                  style: AppTheme.inter(
-                    color: const Color(0xFFE4B53E),
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
+      child: GestureDetector(
+        onTap: () => Navigator.pop(context),
+        child: Container(
+          width: double.infinity,
+          height: 54,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(30),
+            gradient: const LinearGradient(
+              colors: [Color(0xFFF3C756), Color(0xFFB88A2D)],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
             ),
           ),
-          const SizedBox(width: 14),
-          // Confirm — filled
-          Expanded(
-            flex: 2,
-            child: GestureDetector(
-              onTap: () => Navigator.pop(context),
-              child: Container(
-                height: 54,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(30),
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFFF3C756), Color(0xFFB88A2D)],
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                  ),
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  'Confirm',
-                  style: AppTheme.inter(
-                    color: Colors.black,
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
+          alignment: Alignment.center,
+          child: Text(
+            'Confirm',
+            style: AppTheme.inter(
+              color: Colors.black,
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
             ),
           ),
-        ],
+        ),
       ),
     );
   }
