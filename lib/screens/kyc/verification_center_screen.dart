@@ -30,35 +30,11 @@ class VerificationCenterScreen extends StatelessWidget {
           children: [
             const SizedBox(height: 20),
 
-            // Gold circle with tick-circle image
-            Container(
+                        Image.asset(
+              'assets/icons/tick-circle.png',
               width: 72,
               height: 72,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: const LinearGradient(
-                  colors: [Color(0xFFF3C756), Color(0xFFB88A2D)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFFE4B53E).withValues(alpha: 0.3),
-                    blurRadius: 20,
-                    spreadRadius: 2,
-                  ),
-                ],
-              ),
-              child: Center(
-                child: Image.asset(
-                  'assets/icons/tick-circle.png',
-                  width: 36,
-                  height: 36,
-                  color: Colors.white,
-                  errorBuilder: (_, __, ___) =>
-                      const Icon(Icons.check, color: Colors.white, size: 32),
-                ),
-              ),
+              fit: BoxFit.contain,
             ),
             const SizedBox(height: 16),
 
