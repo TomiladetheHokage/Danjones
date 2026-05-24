@@ -17,7 +17,7 @@ List<OnboardingModel> onboardingData = [
     title: "Secure ",
     titleHighlight: "NGN Wallet",
     description: "Experience seamless deposits and withdrawals. Your gateway to crypto starts with a fully protected Naira wallet.",
-    imagePath: "assets/images/Home.png",
+    imagePath: "assets/images/Kyc.png",
   ),
   OnboardingModel(
     title: "Spot & P2P Trading",
@@ -27,6 +27,6 @@ List<OnboardingModel> onboardingData = [
   OnboardingModel(
     title: "Swift KYC Verification",
     description: "Safety first. Verify your identity instantly to start trading securely. Our streamlined process gets you onboarded in minutes.",
-    imagePath: "assets/images/Kyc.png",
+    imagePath: "assets/images/Home.png",
   ),
 ];
