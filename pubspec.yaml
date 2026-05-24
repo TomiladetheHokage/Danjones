@@ -109,7 +109,7 @@ flutter_launcher_icons:
   android: true
   ios: true
   image_path: "assets/images/Danjones-Logo.png"
-  image_path_ios: "assets/images/Danjones-ios-logo.png"
+  image_path_ios: "assets/images/Danjones-ios-icon.png"
   adaptive_icon_foreground: "assets/images/Danjones-Logo.png"
   adaptive_icon_background: "#000000"
 
