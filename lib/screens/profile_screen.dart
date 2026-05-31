@@ -127,71 +127,102 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            'UID: $uid',
-                            style: AppTheme.inter(color: Colors.white54, fontSize: 13),
-                          ),
-                          const SizedBox(width: 4),
-                          const Icon(Icons.copy, color: Colors.white54, size: 14),
-                          const SizedBox(width: 12),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              'VIP 0',
-                              style: AppTheme.inter(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w500),
-                            ),
-                          ),
-                        ],
-                      ),
+                      // Row(
+                      //   mainAxisAlignment: MainAxisAlignment.center,
+                      //   children: [
+                      //     Text(
+                      //       'UID: $uid',
+                      //       style: AppTheme.inter(color: Colors.white54, fontSize: 13),
+                      //     ),
+                      //     const SizedBox(width: 4),
+                      //     const Icon(Icons.copy, color: Colors.white54, size: 14),
+                      //     const SizedBox(width: 12),
+                      //     Container(
+                      //       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      //       decoration: BoxDecoration(
+                      //         color: Colors.white.withOpacity(0.1),
+                      //         borderRadius: BorderRadius.circular(12),
+                      //       ),
+                      //       child: Text(
+                      //         'VIP 0',
+                      //         style: AppTheme.inter(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w500),
+                      //       ),
+                      //     ),
+                      //   ],
+                      // ),
                     ],
                   );
                 },
               ),
-              const SizedBox(height: 20),
-              Container(
-                width: 140,
-                height: 38,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(19),
-                  gradient: const LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [Color(0xFFE4B53E), Color(0xFFB88A2D)],
-                  ),
-                ),
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.transparent,
-                    foregroundColor: Colors.black,
-                    shadowColor: Colors.transparent,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(19),
-                    ),
-                  ),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const EditProfileScreen()),
-                    );
-                  },
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.edit, size: 16),
-                      const SizedBox(width: 6),
-                      Text('Edit Profile', style: AppTheme.inter(fontSize: 13, fontWeight: FontWeight.bold)),
-                    ],
-                  ),
-                ),
+     const SizedBox(height: 20),
+Container(
+  width: 140,
+  height: 38,
+  decoration: BoxDecoration(
+    borderRadius: BorderRadius.circular(19),
+    gradient: const LinearGradient(
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+      colors: [Color(0xFFE4B53E), Color(0xFFB88A2D)],
+    ),
+  ),
+  child: Stack(
+    clipBehavior: Clip.none,
+    alignment: Alignment.center,
+    children: [
+      ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.transparent,
+          foregroundColor: Colors.black,
+          shadowColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(19),
+          ),
+        ),
+        onPressed: () {
+          _showComingSoon(context);
+        },
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.edit, size: 16),
+            const SizedBox(width: 6),
+            Text(
+              'Edit Profile',
+              style: AppTheme.inter(
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
               ),
-              const SizedBox(height: 30),
+            ),
+          ],
+        ),
+      ),
+
+      // Badge overlay (NOT inside Row)
+      Positioned(
+        top: -6,
+        right: -6,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          decoration: BoxDecoration(
+            color: Colors.black,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Text(
+            'Coming Soon',
+            style: AppTheme.inter(
+              fontSize: 9,
+              fontWeight: FontWeight.w600,
+              color: const Color(0xFFE4B53E),
+            ),
+          ),
+        ),
+      ),
+    ],
+  ),
+),
+const SizedBox(height: 30),
               
               // Menu Items
               _buildMenuGroup([
@@ -199,21 +230,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   imagePath: 'assets/icons/finger-print.png',
                   title: 'Identity Verification',
                   subtitle: 'Level 1 Limits: 50k NGN/Day',
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const VerificationCenterScreen()),
-                  ),
-                  trailing: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE4B53E).withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      'Unverified',
-                      style: AppTheme.inter(color: const Color(0xFFE4B53E), fontSize: 12, fontWeight: FontWeight.w500),
-                    ),
-                  ),
+                 onTap: () {
+  _showComingSoon(context);
+
+  // TODO: enable when KYC is ready
+  // Navigator.push(
+  //   context,
+  //   MaterialPageRoute(builder: (_) => const VerificationCenterScreen()),
+  // );
+},
+       trailing: SizedBox(
+  height: 20,
+  child: Container(
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+    decoration: BoxDecoration(
+      color: const Color(0xFFE4B53E).withOpacity(0.15),
+      borderRadius: BorderRadius.circular(12),
+    ),
+    child: Text(
+      'Coming Soon',
+      style: AppTheme.inter(
+        color: const Color(0xFFE4B53E),
+        fontSize: 10,
+        fontWeight: FontWeight.w500,
+      ),
+    ),
+  ),
+),
                 ),
               ]),
               const SizedBox(height: 16),
@@ -222,24 +265,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   imagePath: 'assets/icons/payment.png',
                   title: 'Payment Methods',
                   subtitle: 'Manage NGN Bank Accounts',
+                  trailing: _comingSoonBadge(),
+                  onTap: () {
+                    _showComingSoon(context);
+                  },
                 ),
                 _buildMenuItem(
                   imagePath: 'assets/icons/security.png',
                   title: 'Security Center',
                   subtitle: '2FA, Password, Anti-Phishing',
                   onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const Enable2faScanScreen()),
-                    );
+                    _showComingSoon(context);
                   },
                   trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Container(width: 6, height: 16, decoration: BoxDecoration(color: const Color(0xFFE4B53E), borderRadius: BorderRadius.circular(3))),
-                      const SizedBox(width: 2),
-                      Container(width: 6, height: 16, decoration: BoxDecoration(color: const Color(0xFFE4B53E), borderRadius: BorderRadius.circular(3))),
-                      const SizedBox(width: 2),
-                      Container(width: 6, height: 16, decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(3))),
+                      _comingSoonBadge(),
                     ],
                   ),
                 ),
@@ -247,24 +288,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   imagePath: 'assets/icons/history.png',
                   title: 'Transaction History',
                   subtitle: 'Spot, P2P, Withdrawals',
+                  trailing: _comingSoonBadge(),
                   onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const TradeScreen()),
-                    );
+                    _showComingSoon(context);
+                    // Navigator.push(
+                    //   context,
+                    //   MaterialPageRoute(builder: (context) => const TradeScreen()),
+                    // );
                   },
                 ),
-                _buildMenuItem(
-                  icon: Icons.campaign_outlined,
-                  title: 'My Ads',
-                  subtitle: 'Manage your P2P buy/sell ads',
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const MyAdsScreen()),
-                    );
-                  },
-                ),
+                // _buildMenuItem(
+                //   icon: Icons.campaign_outlined,
+                //   title: 'My Ads',
+                //   subtitle: 'Manage your P2P buy/sell ads',
+                //   onTap: () {
+                //     Navigator.push(
+                //       context,
+                //       MaterialPageRoute(builder: (context) => const MyAdsScreen()),
+                //     );
+                //   },
+                // ),
               ]),
               const SizedBox(height: 16),
               _buildMenuGroup([
@@ -272,11 +315,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   imagePath: 'assets/icons/refferal.png',
                   title: 'Referral & Rewards',
                   subtitle: 'Invite friends, earn up to 40%',
+                  trailing: _comingSoonBadge(),
                   onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const ReferralScreen()),
-                    );
+                    _showComingSoon(context);
+                    // Navigator.push(
+                    //   context,
+                    //   MaterialPageRoute(builder: (context) => const ReferralScreen()),
+                    // );
                   },
                 ),
               ]),
@@ -285,22 +330,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 _buildMenuItem(
                   imagePath: 'assets/icons/customer-support.png',
                   title: 'Customer Support',
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const CustomerSupportScreen()),
-                    );
-                  },
+                  trailing: _comingSoonBadge(),
+               onTap: () {
+  _showComingSoon(context);
+
+  // TODO: enable later
+  // Navigator.push(
+  //   context,
+  //   MaterialPageRoute(builder: (_) => const CustomerSupportScreen()),
+  // );
+},
                 ),
                 _buildMenuItem(
                   imagePath: 'assets/icons/settings.png',
                   title: 'Settings',
                   subtitle: 'Language, Theme',
+                  trailing: _comingSoonBadge(),
                   onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const SettingsScreen()),
-                    );
+                      _showComingSoon(context);
+
+                      // TODO: enable later
+                      // Navigator.push(
+                      //   context,
+                      //   MaterialPageRoute(builder: (context) => const SettingsScreen()),
+                      // );
                   },
                 ),
                 _buildMenuItem(
@@ -425,14 +478,105 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ],
               ),
             ),
-            if (trailing != null) ...[
-              trailing,
-              const SizedBox(width: 12),
-            ],
-            Icon(Icons.arrow_forward_ios, color: Colors.white.withValues(alpha: 0.3), size: 14),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (trailing != null) ...[
+                  trailing,
+                  const SizedBox(width: 8),
+                ],
+                Icon(Icons.arrow_forward_ios, color: Colors.white.withValues(alpha: 0.3), size: 14),
+              ],
+            ),
           ],
         ),
       ),
     );
   }
+void _showComingSoon(BuildContext context) {
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: Colors.transparent,
+    barrierColor: Colors.black.withOpacity(0.6),
+    builder: (_) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1C1D21),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white.withOpacity(0.05)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE4B53E).withOpacity(0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.rocket_launch,
+                  color: Color(0xFFE4B53E),
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: const [
+                    Text(
+                      "Coming Soon",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      "This feature is still in development.",
+                      style: TextStyle(
+                        color: Colors.white54,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              GestureDetector(
+                onTap: () => Navigator.pop(context),
+                child: const Icon(Icons.close, color: Colors.white54),
+              )
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
+
+Widget _comingSoonBadge() {
+  return Container(
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+    decoration: BoxDecoration(
+      color: const Color(0xFFE4B53E).withOpacity(0.15),
+      borderRadius: BorderRadius.circular(12),
+    ),
+    child: const Text(
+      'Coming Soon',
+      style: TextStyle(
+        color: Color(0xFFE4B53E),
+        fontSize: 10,
+        fontWeight: FontWeight.w600,
+      ),
+    ),
+  );
+}
 }

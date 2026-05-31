@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../models/wallet.dart';
 import '../theme/app_theme.dart';
-import '../widgets/sparkline_chart.dart';
 import '../services/crypto_service.dart';
 import '../models/crypto_asset.dart';
 import 'deposit_select_coin_screen.dart';
@@ -31,7 +30,7 @@ class _AssetDetailsScreenState extends State<AssetDetailsScreen> {
 
   Future<void> _fetchLiveMarketData() async {
     try {
-      final list = await CryptoService.fetchDashboardCurrencies();
+      final list = await CryptoService.fetchMarketsOnce();
       final symbol = widget.wallet.currency.symbol.toUpperCase();
       final match = list.where((c) => c.symbol.toUpperCase() == symbol).firstOrNull;
       if (match != null && mounted) {

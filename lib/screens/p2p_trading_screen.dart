@@ -365,7 +365,8 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> {
   Widget _buildAdCard(P2PAd ad) {
     // Dummy data for fields not yet in the API response
     const tradeStats = '450 trades | 98.5%';
-    final methods = ['Palmpay', 'Bank Transfer'];
+    // final methods = ['Palmpay', 'Bank Transfer'];
+    final methods = <String>[]; // no payment methods
 
     final initials = ad.userName.length >= 2
         ? ad.userName.substring(0, 2).toUpperCase()

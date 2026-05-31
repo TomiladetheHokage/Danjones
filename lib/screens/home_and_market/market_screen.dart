@@ -5,6 +5,8 @@ import '../../widgets/token_list_item.dart';
 import '../../theme/app_theme.dart';
 import '../../services/crypto_service.dart';
 import 'market_asset_screen.dart';
+import 'top_movers_screen.dart';
+import 'new_coins_screen.dart';
 
 class MarketScreen extends StatefulWidget {
   const MarketScreen({super.key});
@@ -19,12 +21,13 @@ class _MarketScreenState extends State<MarketScreen> {
   @override
   void initState() {
     super.initState();
-    marketFuture = CryptoService.fetchTopMovers();
+    marketFuture = CryptoService.fetchMarketsOnce();
   }
 
   Future<void> _refresh() async {
+    CryptoService.invalidateCache();
     setState(() {
-      marketFuture = CryptoService.fetchTopMovers();
+      marketFuture = CryptoService.fetchMarketsOnce();
     });
   }
 
@@ -65,7 +68,8 @@ class _MarketScreenState extends State<MarketScreen> {
 
               final allAssets = snapshot.data!;
               final topMovers = List<CryptoAsset>.from(allAssets)..sort((a, b) => b.priceChangePercent.compareTo(a.priceChangePercent));
-              final newAssets = List<CryptoAsset>.from(allAssets)..sort((a, b) => a.priceChangePercent.compareTo(b.priceChangePercent)); // using losers as "new" for now
+              // New coins: sort by market cap descending (high-volume/well-established trending proxies)
+              final newAssets = List<CryptoAsset>.from(allAssets)..sort((a, b) => b.marketCap.compareTo(a.marketCap));
               
               final topMoversList = topMovers.take(5).toList();
               final newAssetsList = newAssets.take(5).toList();
@@ -74,9 +78,17 @@ class _MarketScreenState extends State<MarketScreen> {
                 physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
                 slivers: [
                   SliverToBoxAdapter(child: _buildMarketHeader()),
-                  SliverToBoxAdapter(child: _buildSectionHeader('Top Movers', onViewAll: () {})),
+                  SliverToBoxAdapter(child: _buildSectionHeader('Top Movers', onViewAll: () {
+                    Navigator.of(context, rootNavigator: true).push(
+                      MaterialPageRoute(builder: (context) => const TopMoversScreen()),
+                    );
+                  })),
                   SliverToBoxAdapter(child: _buildTopMoversRow(context, topMoversList)),
-                  SliverToBoxAdapter(child: _buildSectionHeader('New', onViewAll: () {})),
+                  SliverToBoxAdapter(child: _buildSectionHeader('New', onViewAll: () {
+                    Navigator.of(context, rootNavigator: true).push(
+                      MaterialPageRoute(builder: (context) => const NewCoinsScreen()),
+                    );
+                  })),
                   SliverToBoxAdapter(child: _buildNewRow(context, newAssetsList)),
                   
                   SliverToBoxAdapter(child: _buildSectionHeader('Top Assets', onViewAll: () {})),

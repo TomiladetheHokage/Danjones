@@ -136,19 +136,19 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 12),
                 
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: () {},
-                    child: Text(
-                      'Forget Password',
-                      style: GoogleFonts.outfit(
-                        color: const Color(0xFFE4B53E),
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ),
+                // Align(
+                //   alignment: Alignment.centerRight,
+                //   child: TextButton(
+                //     onPressed: () {},
+                //     child: Text(
+                //       'Forget Password',
+                //       style: GoogleFonts.outfit(
+                //         color: const Color(0xFFE4B53E),
+                //         fontWeight: FontWeight.w500,
+                //       ),
+                //     ),
+                //   ),
+                // ),
 
                 const SizedBox(height: 32),
 
@@ -183,39 +183,39 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
 
                 const SizedBox(height: 32),
-                Center(
-                  child: Text(
-                    'Or continue with',
-                    style: GoogleFonts.outfit(color: Colors.white30),
-                  ),
-                ),
-                const SizedBox(height: 24),
+                // Center(
+                //   child: Text(
+                //     'Or continue with',
+                //     style: GoogleFonts.outfit(color: Colors.white30),
+                //   ),
+                // ),
+                // const SizedBox(height: 24),
 
                 // Touch ID / Biometric (Simulated)
-                Center(
-                  child: Column(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.transparent,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: const Color(0xFFE4B53E).withValues(alpha: 0.5)),
-                        ),
-                        child: const Icon(
-                          Icons.fingerprint,
-                          color: Color(0xFFE4B53E),
-                          size: 40,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Touch ID',
-                        style: GoogleFonts.outfit(color: Colors.white54),
-                      ),
-                    ],
-                  ),
-                ),
+                // Center(
+                //   child: Column(
+                //     children: [
+                //       Container(
+                //         padding: const EdgeInsets.all(16),
+                //         decoration: BoxDecoration(
+                //           color: Colors.transparent,
+                //           shape: BoxShape.circle,
+                //           border: Border.all(color: const Color(0xFFE4B53E).withValues(alpha: 0.5)),
+                //         ),
+                //         child: const Icon(
+                //           Icons.fingerprint,
+                //           color: Color(0xFFE4B53E),
+                //           size: 40,
+                //         ),
+                //       ),
+                //       const SizedBox(height: 8),
+                //       Text(
+                //         'Touch ID',
+                //         style: GoogleFonts.outfit(color: Colors.white54),
+                //       ),
+                //     ],
+                //   ),
+                // ),
                 const SizedBox(height: 48), // Increased bottom padding
               ],
             ),

@@ -222,12 +222,12 @@ if (score == -1) {
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.help_outline, color: Colors.white70),
-            onPressed: () {},
-          ),
-        ],
+        // actions: [
+        //   IconButton(
+        //     icon: const Icon(Icons.help_outline, color: Colors.white70),
+        //     onPressed: () {},
+        //   ),
+        // ],
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -334,26 +334,26 @@ if (score == -1) {
 
                 const SizedBox(height: 20),
                 // Referral Code
-                GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      _showRefCode = !_showRefCode;
-                    });
-                  },
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Referral code (optional)',
-                        style: GoogleFonts.outfit(color: Colors.white54),
-                      ),
-                      Icon(
-                        _showRefCode ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down, 
-                        color: Colors.white54,
-                      ),
-                    ],
-                  ),
-                ),
+                // GestureDetector(
+                //   onTap: () {
+                //     setState(() {
+                //       _showRefCode = !_showRefCode;
+                //     });
+                //   },
+                //   child: Row(
+                //     mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                //     children: [
+                //       Text(
+                //         'Referral code (optional)',
+                //         style: GoogleFonts.outfit(color: Colors.white54),
+                //       ),
+                //       Icon(
+                //         _showRefCode ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down, 
+                //         color: Colors.white54,
+                //       ),
+                //     ],
+                //   ),
+                // ),
                 if (_showRefCode) ...[
                   const SizedBox(height: 16),
                   CustomTextField(
@@ -441,23 +441,23 @@ if (score == -1) {
                 ),
 
                 const SizedBox(height: 24),
-                Center(
-                  child: Text(
-                    'Or continue with',
-                    style: GoogleFonts.outfit(color: Colors.white30),
-                  ),
-                ),
+                // Center(
+                //   child: Text(
+                //     'Or continue with',
+                //     style: GoogleFonts.outfit(color: Colors.white30),
+                //   ),
+                // ),
                 const SizedBox(height: 16),
                 
                 // Social Login Buttons
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _buildSocialButton('assets/images/Google-original.png', 'Google'),
-                    const SizedBox(width: 20),
-                    _buildSocialButton('assets/images/apple-logo.png', 'Apple'),
-                  ],
-                ),
+                // Row(
+                //   mainAxisAlignment: MainAxisAlignment.center,
+                //   children: [
+                //     _buildSocialButton('assets/images/Google-original.png', 'Google'),
+                //     const SizedBox(width: 20),
+                //     _buildSocialButton('assets/images/apple-logo.png', 'Apple'),
+                //   ],
+                // ),
 
                 const SizedBox(height: 24), // Reduced spacing from 32
                 Row(

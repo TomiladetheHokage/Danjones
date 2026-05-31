@@ -3,74 +3,166 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 import '../models/crypto_asset.dart';
 import '../widgets/interactive_chart/candle_data.dart';
-import 'api_service.dart';
 
 class CryptoService {
-  static const String apiUrl =
-      'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&sparkline=true&price_change_percentage=24h';
+  // ── CoinGecko endpoints ────────────────────────────────────────────────────
+  static const String _marketsUrl =
+      'https://api.coingecko.com/api/v3/coins/markets'
+      '?vs_currency=usd'
+      '&order=market_cap_desc'
+      '&per_page=100'
+      '&page=1'
+      '&sparkline=true'
+      '&price_change_percentage=24h';
 
-  /// Fetches currencies from backend and merges with CoinGecko pricing
-  static Future<List<CryptoAsset>> fetchDashboardCurrencies() async {
-    try {
-      // Fetch backend currencies
-      final backendCurrencies = await ApiService.getCurrencies();
-      
-      // Fetch CoinGecko prices
-      final response = await http.get(Uri.parse('$apiUrl&per_page=100&page=1'));
-      List<CryptoAsset> result = [];
-      
-      if (response.statusCode == 200) {
-        final List<dynamic> cgData = jsonDecode(response.body);
-        
-        // Merge
-        for (var currency in backendCurrencies) {
-          // Skip Naira in the crypto list
-          if (currency.symbol.toUpperCase() == 'NGN') continue;
-          
-          // Find matching symbol in CoinGecko
-          final cgMatch = cgData.firstWhere(
-            (json) => json['symbol'].toString().toLowerCase() == currency.symbol.toLowerCase(),
-            orElse: () => null,
-          );
-          
-          if (cgMatch != null) {
-            final asset = CryptoAsset.fromJson(cgMatch);
-            debugPrint('Matched ${currency.symbol} with CoinGecko data. Image: ${currency.fullImageUrl}');
-            result.add(CryptoAsset(
-              symbol: currency.symbol,
-              name: currency.name,
-              price: asset.price,
-              priceChangePercent: asset.priceChangePercent,
-              sparklineData: asset.sparklineData,
-              imagePath: currency.fullImageUrl,
-              marketCap: asset.marketCap,
-              circulatingSupply: asset.circulatingSupply,
-              maxSupply: asset.maxSupply,
-            ));
-          } else {
-            debugPrint('No CoinGecko match for ${currency.symbol}. Using fallback. Image: ${currency.fullImageUrl}');
-            // Provide sensible fallbacks if missing (e.g. for NGN or fiat)
-            result.add(CryptoAsset(
-              symbol: currency.symbol,
-              name: currency.name,
-              price: 1.0, 
-              priceChangePercent: 0.0,
-              sparklineData: [50.0, 50.0, 50.0],
-              imagePath: currency.fullImageUrl,
-            ));
-          }
-        }
-        return result;
-      } else {
-        throw Exception('Failed to load crypto data: ${response.statusCode}');
-      }
-    } catch (e) {
-      throw Exception('Failed to fetch data: $e');
+  static const String _trendingUrl =
+      'https://api.coingecko.com/api/v3/search/trending';
+
+  // ── In-memory cache ────────────────────────────────────────────────────────
+  /// Raw JSON list from /coins/markets — kept so we can filter by 'id' field
+  /// for trending without touching the CryptoAsset model.
+  static List<Map<String, dynamic>>? _cachedRawMarkets;
+
+  /// Parsed [CryptoAsset] list derived from [_cachedRawMarkets].
+  static List<CryptoAsset>? _cachedMarkets;
+
+  // ── Single shared fetch ────────────────────────────────────────────────────
+  /// Fetches /coins/markets once and caches the result in-memory.
+  /// All subsequent calls within the session return the cached list immediately.
+  static Future<List<CryptoAsset>> fetchMarketsOnce() async {
+    if (_cachedMarkets != null && _cachedRawMarkets != null) {
+      debugPrint(
+          'CryptoService: returning cached markets (${_cachedMarkets!.length} coins)');
+      return _cachedMarkets!;
+    }
+
+    debugPrint('CryptoService: fetching /coins/markets…');
+    final response = await http
+        .get(Uri.parse(_marketsUrl), headers: {'Accept': 'application/json'})
+        .timeout(const Duration(seconds: 20));
+
+    if (response.statusCode == 200) {
+      final List<dynamic> raw = jsonDecode(response.body);
+      _cachedRawMarkets =
+          raw.map((e) => e as Map<String, dynamic>).toList();
+      _cachedMarkets =
+          _cachedRawMarkets!.map(CryptoAsset.fromJson).toList();
+      debugPrint(
+          'CryptoService: cached ${_cachedMarkets!.length} coins from CoinGecko');
+      return _cachedMarkets!;
+    } else if (response.statusCode == 429) {
+      throw Exception('Rate limited by CoinGecko. Please wait a moment.');
+    } else {
+      throw Exception(
+          'Failed to load market data (${response.statusCode})');
     }
   }
 
-  static Future<List<CryptoAsset>> fetchTopMovers() async {
-    return fetchDashboardCurrencies();
+  /// Invalidates the in-memory cache so the next call re-fetches from network.
+  static void invalidateCache() {
+    _cachedRawMarkets = null;
+    _cachedMarkets = null;
+    debugPrint('CryptoService: cache invalidated');
+  }
+
+  // ── Derived sorted lists ───────────────────────────────────────────────────
+  /// Returns all coins sorted by 24h price change descending (top gainers).
+  /// Uses the shared [fetchMarketsOnce] cache — no extra network call.
+  static Future<List<CryptoAsset>> getTopMovers() async {
+    final markets = await fetchMarketsOnce();
+    final sorted = List<CryptoAsset>.from(markets)
+      ..sort((a, b) =>
+          b.priceChangePercent.compareTo(a.priceChangePercent));
+    return sorted;
+  }
+
+  /// Returns all coins sorted by 24h price change ascending (top losers).
+  /// Uses the shared [fetchMarketsOnce] cache — no extra network call.
+  static Future<List<CryptoAsset>> getTopLosers() async {
+    final markets = await fetchMarketsOnce();
+    final sorted = List<CryptoAsset>.from(markets)
+      ..sort((a, b) =>
+          a.priceChangePercent.compareTo(b.priceChangePercent));
+    return sorted;
+  }
+
+  // ── Trending / New Coins ───────────────────────────────────────────────────
+  /// Fetches trending coin IDs from /search/trending, then filters the cached
+  /// raw markets list to return matching [CryptoAsset] objects.
+  /// Falls back to a targeted /coins/markets call if the cache has no matches.
+  static Future<List<CryptoAsset>> fetchTrendingCoins() async {
+    // 1. Get trending coin IDs from /search/trending
+    final trendingResponse = await http
+        .get(Uri.parse(_trendingUrl), headers: {'Accept': 'application/json'})
+        .timeout(const Duration(seconds: 15));
+
+    if (trendingResponse.statusCode != 200) {
+      if (trendingResponse.statusCode == 429) {
+        throw Exception('Rate limited by CoinGecko. Please wait a moment.');
+      }
+      throw Exception(
+          'Failed to load trending data (${trendingResponse.statusCode})');
+    }
+
+    final trendingJson =
+        jsonDecode(trendingResponse.body) as Map<String, dynamic>;
+    final trendingCoins =
+        (trendingJson['coins'] as List<dynamic>? ?? []);
+    final trendingIds = trendingCoins
+        .map((c) =>
+            ((c as Map<String, dynamic>)['item']
+                as Map<String, dynamic>)['id']
+                ?.toString())
+        .where((id) => id != null)
+        .cast<String>()
+        .toSet();
+
+    debugPrint(
+        'CryptoService: trending IDs = ${trendingIds.take(10).join(', ')}');
+
+    // 2. Ensure the markets cache is warm
+    await fetchMarketsOnce();
+
+    // 3. Filter raw markets JSON by trending ID (avoids touching CryptoAsset model)
+    final matched = _cachedRawMarkets!
+        .where((json) =>
+            trendingIds.contains(json['id']?.toString()))
+        .map(CryptoAsset.fromJson)
+        .toList();
+
+    if (matched.isNotEmpty) {
+      debugPrint(
+          'CryptoService: ${matched.length} trending coins matched from cache');
+      return matched;
+    }
+
+    // 4. Fallback: fetch the trending IDs directly from /coins/markets
+    debugPrint(
+        'CryptoService: cache miss — fetching trending coins from /coins/markets');
+    final idsParam = trendingIds.take(20).join(',');
+    final fallbackUrl =
+        'https://api.coingecko.com/api/v3/coins/markets'
+        '?vs_currency=usd'
+        '&ids=$idsParam'
+        '&order=market_cap_desc'
+        '&per_page=20'
+        '&page=1'
+        '&sparkline=true'
+        '&price_change_percentage=24h';
+
+    final fallbackResponse = await http
+        .get(Uri.parse(fallbackUrl), headers: {'Accept': 'application/json'})
+        .timeout(const Duration(seconds: 15));
+
+    if (fallbackResponse.statusCode == 200) {
+      final List<dynamic> raw = jsonDecode(fallbackResponse.body);
+      return raw
+          .map((e) => CryptoAsset.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } else {
+      throw Exception(
+          'Failed to load trending coin details (${fallbackResponse.statusCode})');
+    }
   }
 
   // ── CoinGecko coin ID lookup ───────────────────────────────────────────────
@@ -100,7 +192,7 @@ class CryptoService {
     return _coinIdMap[symbol.toLowerCase()] ?? symbol.toLowerCase();
   }
 
-  // ── OHLC candle data ──────────────────────────────────────────────────────
+  // ── OHLC candle data ───────────────────────────────────────────────────────
   /// Fetches real OHLC candle data from CoinGecko.
   ///
   /// [days] controls the range: 1 = last 24h, 7 = last week, 30 = last month.
@@ -118,7 +210,8 @@ class CryptoService {
       '?vs_currency=usd&days=$days',
     );
 
-    final response = await http.get(uri, headers: {'Accept': 'application/json'})
+    final response = await http
+        .get(uri, headers: {'Accept': 'application/json'})
         .timeout(const Duration(seconds: 15));
 
     if (response.statusCode == 200) {
@@ -153,18 +246,24 @@ class CryptoService {
       '?localization=false&tickers=false&community_data=false&developer_data=false',
     );
 
-    final response = await http.get(uri, headers: {'Accept': 'application/json'})
+    final response = await http
+        .get(uri, headers: {'Accept': 'application/json'})
         .timeout(const Duration(seconds: 15));
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body) as Map<String, dynamic>;
       final md = data['market_data'] as Map<String, dynamic>? ?? {};
       return {
-        'market_cap': ((md['market_cap']?['usd']) as num?)?.toDouble() ?? 0.0,
-        'circulating_supply': ((md['circulating_supply']) as num?)?.toDouble() ?? 0.0,
-        'max_supply': ((md['max_supply']) as num?)?.toDouble() ?? 0.0,
-        'current_price': ((md['current_price']?['usd']) as num?)?.toDouble() ?? 0.0,
-        'price_change_24h': ((md['price_change_percentage_24h']) as num?)?.toDouble() ?? 0.0,
+        'market_cap':
+            ((md['market_cap']?['usd']) as num?)?.toDouble() ?? 0.0,
+        'circulating_supply':
+            ((md['circulating_supply']) as num?)?.toDouble() ?? 0.0,
+        'max_supply':
+            ((md['max_supply']) as num?)?.toDouble() ?? 0.0,
+        'current_price':
+            ((md['current_price']?['usd']) as num?)?.toDouble() ?? 0.0,
+        'price_change_24h':
+            ((md['price_change_percentage_24h']) as num?)?.toDouble() ?? 0.0,
       };
     } else if (response.statusCode == 429) {
       throw Exception('Rate limited by CoinGecko. Please wait a moment.');

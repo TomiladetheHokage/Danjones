@@ -16,6 +16,7 @@ import '../../models/dashboard_data.dart';
 import '../../models/wallet.dart';
 import '../../services/data_store.dart';
 import 'market_asset_screen.dart';
+import 'package:flutter/services.dart';
 
 class CryptoDashboard extends StatefulWidget {
   const CryptoDashboard({super.key});
@@ -36,7 +37,7 @@ class _CryptoDashboardState extends State<CryptoDashboard> {
   }
 
   Future<void> _fetchInitialData() async {
-    marketFuture = CryptoService.fetchDashboardCurrencies();
+    marketFuture = CryptoService.fetchMarketsOnce();
     // Fetch dashboard data and update store
     try {
       final dashboardData = await ApiService.getDashboardData();
@@ -47,8 +48,9 @@ class _CryptoDashboardState extends State<CryptoDashboard> {
   }
 
   Future<void> _refresh() async {
+    CryptoService.invalidateCache();
     setState(() {
-      marketFuture = CryptoService.fetchDashboardCurrencies();
+      marketFuture = CryptoService.fetchMarketsOnce();
     });
     try {
       final dashboardData = await ApiService.getDashboardData();
@@ -143,6 +145,8 @@ class _CryptoDashboardState extends State<CryptoDashboard> {
 
                   final allAssets = snapshot.data!;
                   final topMovers = List<CryptoAsset>.from(allAssets)..sort((a, b) => b.priceChangePercent.compareTo(a.priceChangePercent));
+                  final topLosers = List<CryptoAsset>.from(allAssets)..sort((a, b) => a.priceChangePercent.compareTo(b.priceChangePercent));
+                  final sectionAssets = _isMoversSelected ? topMovers : topLosers;
 
                   return ValueListenableBuilder<DashboardData?>(
                     valueListenable: DataStore.instance.dashboard,
@@ -166,7 +170,7 @@ class _CryptoDashboardState extends State<CryptoDashboard> {
                       _buildBalanceSection(),
                       _buildActionGrid(),
                       _buildMoversToggle(),
-                      _buildHorizontalMovers(topMovers),
+                      _buildHorizontalMovers(sectionAssets, showLosers: !_isMoversSelected),
                       _buildTokenHeader(),
                       _buildTokenList(assetsForList),
                       const SliverToBoxAdapter(child: SizedBox(height: 120)),
@@ -213,19 +217,133 @@ class _CryptoDashboardState extends State<CryptoDashboard> {
                 },
               ),
             ),
-            Row(
-              children: [
-                const Icon(Icons.circle, size: 8, color: Colors.white),
-                const SizedBox(width: 8),
-                Text('Wallet (0xbhc...cdjds)', 
-                  style: AppTheme.inter(color: Colors.white, fontSize: 14)),
-              ],
+            Expanded(
+              child: ValueListenableBuilder<DashboardData?>(
+                valueListenable: DataStore.instance.dashboard,
+                builder: (context, data, _) {
+                  final btcWallets = data?.wallets
+                          .where((w) => w.currency.symbol.toUpperCase() == 'BTC')
+                          .toList() ??
+                      [];
+
+                  final btcWallet =
+                      btcWallets.isNotEmpty ? btcWallets.first : null;
+
+                  final address = btcWallet?.address ?? '';
+
+                  final displayAddress = address.length > 13
+                      ? '${address.substring(0, 7)}...${address.substring(address.length - 6)}'
+                      : address;
+
+                  return GestureDetector(
+                    onTap: address.isEmpty
+                        ? null
+                        : () async {
+                            await Clipboard.setData(
+                              ClipboardData(text: address),
+                            );
+
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Wallet address copied'),
+                                ),
+                              );
+                            }
+                          },
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.circle, size: 8, color: Colors.white),
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Text(
+                            'Wallet ($displayAddress)',
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTheme.inter(
+                              color: Colors.white,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
             ),
             Image.asset("assets/icons/Notification-icon.png", 
               width: 28, height: 28, color: const Color(0xFFE4B53E)),
           ],
         ),
       ),
+    );
+  }
+
+  void _showComingSoon(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withOpacity(0.6),
+      builder: (_) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1C1D21),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.white.withOpacity(0.05)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE4B53E).withOpacity(0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.rocket_launch,
+                    color: Color(0xFFE4B53E),
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Coming Soon',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        'This feature is still in development.',
+                        style: TextStyle(
+                          color: Colors.white54,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: const Icon(Icons.close, color: Colors.white54),
+                )
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -288,21 +406,21 @@ SliverToBoxAdapter _buildBalanceSection() {
                 },
               ),
               const SizedBox(height: 14),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF45E555).withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(100),
-                ),
-                child: Text(
-                  '+ ₦25,000 (2.4%)',
-                  style: AppTheme.inter(
-                    color: const Color(0xFF45E555), 
-                    fontSize: 13, 
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              )
+              // Container(
+              //   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              //   decoration: BoxDecoration(
+              //     color: const Color(0xFF45E555).withOpacity(0.15),
+              //     borderRadius: BorderRadius.circular(100),
+              //   ),
+              //   child: Text(
+              //     '+ ₦25,000 (2.4%)',
+              //     style: AppTheme.inter(
+              //       color: const Color(0xFF45E555), 
+              //       fontSize: 13, 
+              //       fontWeight: FontWeight.w600,
+              //     ),
+              //   ),
+              // )
             ],
           ),
         ),
@@ -310,45 +428,124 @@ SliverToBoxAdapter _buildBalanceSection() {
     );
   }
 
-  SliverToBoxAdapter _buildActionGrid() {
-    return SliverToBoxAdapter(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            _actionItem('Deposit', 'assets/icons/deposit.png', true, onTap: () {
+SliverToBoxAdapter _buildActionGrid() {
+  return SliverToBoxAdapter(
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          _actionItem(
+            'Deposit',
+            'assets/icons/deposit.png',
+            true,
+            onTap: () {
               Navigator.of(context, rootNavigator: true).push(
                 MaterialPageRoute(builder: (context) => const DepositScreen()),
               );
-            }),
-            _actionItem('Buy', 'assets/icons/buy.png', false),
-            _actionItem('Swap', 'assets/icons/swap.png', false, onTap: () {
-              mainShellKey.currentState?.setTab(2);
-            }),
-            _actionItem('P2P', 'assets/icons/p2p.png', false, onTap: () {
+            },
+          ),
+
+          _actionItem(
+            'Buy',
+            'assets/icons/buy.png',
+            false,
+            onTap: () => _showComingSoon(context),
+          ),
+
+          _actionItem(
+            'Swap',
+            'assets/icons/swap.png',
+            false,
+            onTap: () {
+              _showComingSoon(context);
+              // mainShellKey.currentState?.setTab(2);
+            },
+          ),
+
+          _actionItem(
+            'P2P',
+            'assets/icons/p2p.png',
+            false,
+            onTap: () {
               Navigator.of(context, rootNavigator: true).push(
                 MaterialPageRoute(builder: (context) => const P2PTradingScreen()),
               );
-            }),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _actionItem(String label, String iconPath, bool isGold, {VoidCallback? onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        children: [
-          Image.asset(iconPath, width: 65, height: 65),
-          const SizedBox(height: 8),
-          Text(label, style: AppTheme.inter(color: Colors.white70, fontSize: 13)),
+            },
+          ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
+
+  // Widget _actionItem(String label, String iconPath, bool isGold, {VoidCallback? onTap}) {
+  //   return GestureDetector(
+  //     onTap: onTap,
+  //     child: Column(
+  //       children: [
+  //         Image.asset(iconPath, width: 65, height: 65),
+  //         const SizedBox(height: 8),
+  //         Text(label, style: AppTheme.inter(color: Colors.white70, fontSize: 13)),
+  //       ],
+  //     ),
+  //   );
+  // }
+
+  Widget _actionItem(
+  String label,
+  String iconPath,
+  bool isGold, {
+  VoidCallback? onTap,
+}) {
+  return GestureDetector(
+    onTap: onTap,
+    child: Column(
+      children: [
+        Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Image.asset(iconPath, width: 65, height: 65),
+
+if (label == 'Swap' || label == 'Buy')
+              Positioned(
+                top: -2,
+                right: -8,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE4B53E),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    'Coming Soon',
+                    style: AppTheme.inter(
+                      color: Colors.black,
+                      fontSize: 8,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+
+        const SizedBox(height: 8),
+
+        Text(
+          label,
+          style: AppTheme.inter(
+            color: Colors.white70,
+            fontSize: 13,
+          ),
+        ),
+      ],
+    ),
+  );
+}
 
   SliverToBoxAdapter _buildMoversToggle() {
     return SliverToBoxAdapter(
@@ -365,9 +562,6 @@ SliverToBoxAdapter _buildBalanceSection() {
           children: [
             _toggleBtn('Top Movers', _isMoversSelected, () {
               setState(() => _isMoversSelected = true);
-              Navigator.of(context, rootNavigator: true).push(
-                MaterialPageRoute(builder: (context) => const TopMoversScreen()),
-              );
             }),
             _toggleBtn('Top Losers', !_isMoversSelected, () => setState(() => _isMoversSelected = false)),
           ],
@@ -398,7 +592,7 @@ child: Text(
     );
   }
 
-  SliverToBoxAdapter _buildHorizontalMovers(List<CryptoAsset> assets) {
+  SliverToBoxAdapter _buildHorizontalMovers(List<CryptoAsset> assets, {required bool showLosers}) {
     return SliverToBoxAdapter(
       child: Column(
         children: [
@@ -408,7 +602,7 @@ child: Text(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Top Movers',
+                  showLosers ? 'Top Losers' : 'Top Movers',
                   style: AppTheme.inter(
                     color: Colors.white,
                     fontSize: 15,
@@ -418,7 +612,7 @@ child: Text(
                 GestureDetector(
                   onTap: () {
                     Navigator.of(context, rootNavigator: true).push(
-                      MaterialPageRoute(builder: (context) => const TopMoversScreen()),
+                      MaterialPageRoute(builder: (context) => TopMoversScreen(showLosers: showLosers)),
                     );
                   },
                   child: const Text(
@@ -525,12 +719,16 @@ Widget _moverCard(BuildContext context, String sym, String name, String price, S
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        sym, 
-                        style: AppTheme.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)
+                      Expanded(
+                        child: Text(
+                          sym,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTheme.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                        ),
                       ),
+                      const SizedBox(width: 6),
                       // Percentage Pill (Oval Stuff)
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),

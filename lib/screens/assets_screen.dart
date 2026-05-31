@@ -115,22 +115,22 @@ class _AssetsScreenState extends State<AssetsScreen> {
               ),
             ),
             const SizedBox(height: 14),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(
-                color: const Color(0xFF45E555).withOpacity(0.15),
-                borderRadius: BorderRadius.circular(100),
-              ),
-              child: Text(
-                // Note: using placeholder until backend provides PnL data
-                '+ ₦25,000.00 (2.4%)',
-                style: AppTheme.inter(
-                  color: const Color(0xFF45E555),
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
+            // Container(
+            //   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            //   decoration: BoxDecoration(
+            //     color: const Color(0xFF45E555).withOpacity(0.15),
+            //     borderRadius: BorderRadius.circular(100),
+            //   ),
+            //   child: Text(
+            //     // Note: using placeholder until backend provides PnL data
+            //     '+ ₦25,000.00 (2.4%)',
+            //     style: AppTheme.inter(
+            //       color: const Color(0xFF45E555),
+            //       fontSize: 13,
+            //       fontWeight: FontWeight.w600,
+            //     ),
+            //   ),
+            // ),
           ],
         ),
       ),

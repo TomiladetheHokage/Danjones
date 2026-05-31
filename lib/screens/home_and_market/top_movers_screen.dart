@@ -6,7 +6,9 @@ import '../../theme/app_theme.dart';
 import '../../services/crypto_service.dart';
 
 class TopMoversScreen extends StatefulWidget {
-  const TopMoversScreen({super.key});
+  final bool showLosers;
+
+  const TopMoversScreen({super.key, this.showLosers = false});
 
   @override
   State<TopMoversScreen> createState() => _TopMoversScreenState();
@@ -15,15 +17,22 @@ class TopMoversScreen extends StatefulWidget {
 class _TopMoversScreenState extends State<TopMoversScreen> {
   late Future<List<CryptoAsset>> moversFuture;
 
+  Future<List<CryptoAsset>> _loadAssets() {
+    return widget.showLosers
+        ? CryptoService.getTopLosers()
+        : CryptoService.getTopMovers();
+  }
+
   @override
   void initState() {
     super.initState();
-    moversFuture = CryptoService.fetchTopMovers();
+    moversFuture = _loadAssets();
   }
 
   Future<void> _refresh() async {
+    CryptoService.invalidateCache();
     setState(() {
-      moversFuture = CryptoService.fetchTopMovers();
+      moversFuture = _loadAssets();
     });
   }
 
@@ -117,7 +126,7 @@ Widget _buildHeader(BuildContext context) {
           ),
         ),
         Text(
-          'Top movers',
+          widget.showLosers ? 'Top losers' : 'Top movers',
           style: AppTheme.inter(
             fontSize: 18,
             fontWeight: FontWeight.w600,
