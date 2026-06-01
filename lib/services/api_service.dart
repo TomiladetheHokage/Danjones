@@ -586,4 +586,37 @@ class ApiService {
       throw Exception(errMsg);
     }
   }
+
+  static Future<Map<String, dynamic>> verifyNin({
+    required String firstname,
+    required String middlename,
+    required String lastname,
+    required String nin,
+  }) async {
+    final response = await _makeRequest(
+      () => http.post(
+        Uri.parse('$baseUrl/verifications/verify-nin'),
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $authToken',
+        },
+        body: jsonEncode({
+          'firstname': firstname,
+          'middlename': middlename,
+          'lastname': lastname,
+          'nin': nin,
+        }),
+      ),
+      requestName: 'VERIFY_NIN',
+    );
+
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return data;
+    }
+
+    final dynamic message = data['message'];
+    throw Exception(message is String ? message : 'An error occurred during verification. Please try again later.');
+  }
 }

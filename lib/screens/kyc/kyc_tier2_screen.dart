@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
+import '../../services/api_service.dart';
 import 'kyc_under_review_screen.dart';
 
 class KycTier2Screen extends StatefulWidget {
@@ -10,6 +11,12 @@ class KycTier2Screen extends StatefulWidget {
 }
 
 class _KycTier2ScreenState extends State<KycTier2Screen> {
+
+final TextEditingController _firstNameController = TextEditingController();
+final TextEditingController _middleNameController = TextEditingController();
+final TextEditingController _lastNameController = TextEditingController();
+final TextEditingController _ninController = TextEditingController();
+
   static const List<String> _docTypes = [
     'National ID (NIN)',
     'International Passport',
@@ -21,157 +28,233 @@ class _KycTier2ScreenState extends State<KycTier2Screen> {
   bool _docDropdownOpen = false;
   bool _docUploaded = false;
   bool _selfieUploaded = false;
+  bool _isSubmitting = false;
+
+  bool get _isFormValid => 
+      _selectedDoc == 'National ID (NIN)' &&
+      _firstNameController.text.isNotEmpty &&
+      _lastNameController.text.isNotEmpty &&
+      _ninController.text.isNotEmpty;
+
+  Future<void> _submitNinVerification() async {
+    if (_isSubmitting || !_isFormValid) return;
+
+    setState(() => _isSubmitting = true);
+    try {
+      await ApiService.verifyNin(
+        firstname: _firstNameController.text.trim(),
+        middlename: _middleNameController.text.trim(),
+        lastname: _lastNameController.text.trim(),
+        nin: _ninController.text.trim(),
+      );
+
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const KycUnderReviewScreen(),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      final message = e.toString().replaceFirst('Exception: ', '');
+      await showDialog<void>(
+        context: context,
+        builder: (context) => AlertDialog(
+          backgroundColor: const Color(0xFF151515),
+          title: Text(
+            'Verification Failed',
+            style: AppTheme.inter(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          content: Text(
+            message,
+            style: AppTheme.inter(
+              color: Colors.white70,
+              fontSize: 13,
+              height: 1.5,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(
+                'OK',
+                style: AppTheme.inter(
+                  color: const Color(0xFFE4B53E),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+      }
+    }
+  }
+
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF0A0A0A),
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(
-          'KYC Verification',
-          style: AppTheme.inter(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.white),
-        ),
-        centerTitle: true,
+  void dispose() {
+    _firstNameController.dispose();
+    _middleNameController.dispose();
+    _lastNameController.dispose();
+    _ninController.dispose();
+    super.dispose();
+  }    
+
+  @override
+Widget build(BuildContext context) {
+  return Scaffold(
+    backgroundColor: const Color(0xFF0A0A0A),
+    appBar: AppBar(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back, color: Colors.white),
+        onPressed: () => Navigator.pop(context),
       ),
-      body: SingleChildScrollView(
-        physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildStepIndicator(currentStep: 1),
-            const SizedBox(height: 24),
+      title: Text(
+        'KYC Verification',
+        style: AppTheme.inter(
+          fontSize: 18,
+          fontWeight: FontWeight.w600,
+          color: Colors.white,
+        ),
+      ),
+      centerTitle: true,
+    ),
+    body: SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildStepIndicator(currentStep: 1),
+          const SizedBox(height: 24),
 
-            Text(
-              'Upgrade to Tier 2',
-              style: AppTheme.inter(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+          Text(
+            'Upgrade to Tier 2',
+            style: AppTheme.inter(
+              color: Colors.white,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
             ),
-            const SizedBox(height: 8),
-            Text(
-              'Verify your identity to increase your daily withdrawal limit to 50,000,000 NGN and unlock P2P trading.',
-              style: AppTheme.inter(color: Colors.white38, fontSize: 13, height: 1.5),
-            ),
-            const SizedBox(height: 28),
+          ),
+          const SizedBox(height: 8),
 
-            Text('Document Type', style: AppTheme.inter(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w500)),
-            const SizedBox(height: 8),
-            _buildDropdown(
-              hint: 'Select document type',
-              options: _docTypes,
-              selected: _selectedDoc,
-              isOpen: _docDropdownOpen,
-              onToggle: () => setState(() => _docDropdownOpen = !_docDropdownOpen),
-              onSelect: (val) => setState(() {
-                _selectedDoc = val;
-                _docDropdownOpen = false;
-              }),
+          Text(
+            'Verify your identity to increase your daily withdrawal limit to 50,000,000 NGN and unlock P2P trading.',
+            style: AppTheme.inter(
+              color: Colors.white38,
+              fontSize: 13,
+              height: 1.5,
             ),
-            const SizedBox(height: 6),
-            Text(
-              'Supported formats: JPG, PNG, Max size: 5MB.',
-              style: AppTheme.inter(color: Colors.white24, fontSize: 11),
-            ),
-            const SizedBox(height: 20),
+          ),
+          const SizedBox(height: 28),
 
-            // Upload area
-            _buildUploadBox(
-              uploaded: _docUploaded,
-              onTap: () => setState(() => _docUploaded = !_docUploaded),
+          Text(
+            'Document Type',
+            style: AppTheme.inter(
+              color: Colors.white70,
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 8),
+
+          _buildDropdown(
+            hint: 'Select document type',
+            options: _docTypes,
+            selected: _selectedDoc,
+            isOpen: _docDropdownOpen,
+            onToggle: () => setState(
+              () => _docDropdownOpen = !_docDropdownOpen,
+            ),
+            onSelect: (val) => setState(() {
+              _selectedDoc = val;
+              _docDropdownOpen = false;
+            }),
+          ),
+
+          const SizedBox(height: 6),
+
+          Text(
+            'Supported formats: JPG, PNG, Max size: 5MB.',
+            style: AppTheme.inter(
+              color: Colors.white24,
+              fontSize: 11,
+            ),
+          ),
+
+          const SizedBox(height: 20),
+
+          if (_selectedDoc == 'National ID (NIN)') ...[
+            _buildInputField(
+              label: 'First Name',
+              controller: _firstNameController,
             ),
             const SizedBox(height: 16),
 
-            // Tip
-            _buildTip('Ensure all 4 corners of the document are visible and the text is readable without glare.'),
-            const SizedBox(height: 28),
+            _buildInputField(
+              label: 'Middle Name (Optional)',
+              controller: _middleNameController,
+            ),
+            const SizedBox(height: 16),
 
-            // Liveness check
-            Text('Liveness Check', style: AppTheme.inter(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600)),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFF151515),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1E1E1E),
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-                    ),
-                    child: Icon(
-                      _selfieUploaded ? Icons.check_circle_rounded : Icons.face_rounded,
-                      color: _selfieUploaded ? const Color(0xFF33D17A) : Colors.white38,
-                      size: 26,
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Take a Selfie', style: AppTheme.inter(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
-                        const SizedBox(height: 4),
-                        Text(
-                          "We need to verify that it's really you. Please follow the on-screen instructions.",
-                          style: AppTheme.inter(color: Colors.white38, fontSize: 12, height: 1.4),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  GestureDetector(
-                    onTap: () => setState(() => _selfieUploaded = !_selfieUploaded),
-                    child: Text(
-                      _selfieUploaded ? 'DONE' : 'START',
-                      style: AppTheme.inter(
-                        color: const Color(0xFFE4B53E),
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+            _buildInputField(
+              label: 'Last Name',
+              controller: _lastNameController,
             ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                const Icon(Icons.lock_outline_rounded, color: Colors.white24, size: 14),
-                const SizedBox(width: 6),
-                Text(
-                  'Your data is encrypted and stored securely.',
-                  style: AppTheme.inter(color: Colors.white24, fontSize: 11),
-                ),
-              ],
-            ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 16),
 
-            _buildSubmitButton(
-              label: 'Submit for Review  →',
-              enabled: _selectedDoc != null && _docUploaded && _selfieUploaded,
-              onTap: () => Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (_) => const KycUnderReviewScreen()),
-              ),
+            _buildInputField(
+              label: 'NIN Number',
+              controller: _ninController,
+              isNumeric: true,
             ),
-            const SizedBox(height: 40),
+            const SizedBox(height: 24),
           ],
-        ),
+
+          Row(
+            children: [
+              const Icon(
+                Icons.lock_outline_rounded,
+                color: Colors.white24,
+                size: 14,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                'Your data is encrypted and stored securely.',
+                style: AppTheme.inter(
+                  color: Colors.white24,
+                  fontSize: 11,
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 32),
+
+          _buildSubmitButton(
+            label: 'Submit for Review  →',
+            enabled: _isFormValid && !_isSubmitting,
+            onTap: _submitNinVerification,
+          ),
+
+          const SizedBox(height: 40),
+        ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildStepIndicator({required int currentStep}) {
     return Row(
@@ -243,9 +326,7 @@ class _KycTier2ScreenState extends State<KycTier2Screen> {
               color: const Color(0xFF151515),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: isOpen
-                    ? const Color(0xFFE4B53E)
-                    : Colors.white.withValues(alpha: 0.08),
+                color: isOpen ? const Color(0xFFE4B53E) : Colors.white.withValues(alpha: 0.08),
               ),
             ),
             child: Row(
@@ -279,24 +360,45 @@ class _KycTier2ScreenState extends State<KycTier2Screen> {
             child: Column(
               children: options.map((opt) {
                 final isSelected = opt == selected;
+                final isNin = opt == 'National ID (NIN)';
+                
                 return GestureDetector(
-                  onTap: () => onSelect(opt),
+                  // Only allow selection if it is NIN
+                  onTap: isNin ? () => onSelect(opt) : null, 
                   child: Container(
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                     decoration: BoxDecoration(
-                      color: isSelected
-                          ? const Color(0xFFE4B53E).withValues(alpha: 0.15)
-                          : Colors.transparent,
+                      color: isSelected ? const Color(0xFFE4B53E).withValues(alpha: 0.15) : Colors.transparent,
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Text(
-                      opt,
-                      style: AppTheme.inter(
-                        color: isSelected ? const Color(0xFFE4B53E) : Colors.white70,
-                        fontSize: 14,
-                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                      ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          opt,
+                          style: AppTheme.inter(
+                            color: isNin 
+                                ? (isSelected ? const Color(0xFFE4B53E) : Colors.white70) 
+                                : Colors.white24,
+                            fontSize: 14,
+                            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                          ),
+                        ),
+                        // The "COMING SOON" tag visible in the dropdown menu
+                        if (!isNin)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.05),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              'COMING SOON',
+                              style: AppTheme.inter(color: Colors.white24, fontSize: 9, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
                 );
@@ -307,49 +409,49 @@ class _KycTier2ScreenState extends State<KycTier2Screen> {
     );
   }
 
-  Widget _buildUploadBox({required bool uploaded, required VoidCallback onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: double.infinity,
-        height: 140,
-        decoration: BoxDecoration(
-          color: const Color(0xFF151515),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: uploaded
-                ? const Color(0xFF33D17A).withValues(alpha: 0.5)
-                : Colors.white.withValues(alpha: 0.08),
-            style: BorderStyle.solid,
-          ),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              uploaded ? Icons.check_circle_rounded : Icons.upload_rounded,
-              color: uploaded ? const Color(0xFF33D17A) : Colors.white24,
-              size: 36,
-            ),
-            const SizedBox(height: 10),
-            Text(
-              uploaded ? 'Document uploaded' : 'Tap to upload document',
-              style: AppTheme.inter(
-                color: uploaded ? const Color(0xFF33D17A) : Colors.white38,
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'SVG, PNG, JPG or PDF (max. 5MB)',
-              style: AppTheme.inter(color: Colors.white24, fontSize: 11),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  // Widget _buildUploadBox({required bool uploaded, required VoidCallback onTap}) {
+  //   return GestureDetector(
+  //     onTap: onTap,
+  //     child: Container(
+  //       width: double.infinity,
+  //       height: 140,
+  //       decoration: BoxDecoration(
+  //         color: const Color(0xFF151515),
+  //         borderRadius: BorderRadius.circular(14),
+  //         border: Border.all(
+  //           color: uploaded
+  //               ? const Color(0xFF33D17A).withValues(alpha: 0.5)
+  //               : Colors.white.withValues(alpha: 0.08),
+  //           style: BorderStyle.solid,
+  //         ),
+  //       ),
+  //       child: Column(
+  //         mainAxisAlignment: MainAxisAlignment.center,
+  //         children: [
+  //           Icon(
+  //             uploaded ? Icons.check_circle_rounded : Icons.upload_rounded,
+  //             color: uploaded ? const Color(0xFF33D17A) : Colors.white24,
+  //             size: 36,
+  //           ),
+  //           const SizedBox(height: 10),
+  //           Text(
+  //             uploaded ? 'Document uploaded' : 'Tap to upload document',
+  //             style: AppTheme.inter(
+  //               color: uploaded ? const Color(0xFF33D17A) : Colors.white38,
+  //               fontSize: 13,
+  //               fontWeight: FontWeight.w500,
+  //             ),
+  //           ),
+  //           const SizedBox(height: 4),
+  //           Text(
+  //             'SVG, PNG, JPG or PDF (max. 5MB)',
+  //             style: AppTheme.inter(color: Colors.white24, fontSize: 11),
+  //           ),
+  //         ],
+  //       ),
+  //     ),
+  //   );
+  // }
 
   Widget _buildTip(String text) {
     return Row(
@@ -391,6 +493,28 @@ class _KycTier2ScreenState extends State<KycTier2Screen> {
           ),
         ),
       ),
+    );
+  }
+  Widget _buildInputField({required String label, required TextEditingController controller, bool isNumeric = false}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: AppTheme.inter(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w500)),
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: controller,
+          onChanged: (val) => setState(() {}), // Crucial for button validation
+          keyboardType: isNumeric ? TextInputType.number : TextInputType.text,
+          style: const TextStyle(color: Colors.white),
+          decoration: InputDecoration(
+            filled: true,
+            fillColor: const Color(0xFF151515),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+            hintText: 'Enter $label',
+            hintStyle: const TextStyle(color: Colors.white24),
+          ),
+        ),
+      ],
     );
   }
 }

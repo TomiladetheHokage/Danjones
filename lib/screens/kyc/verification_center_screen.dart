@@ -61,7 +61,7 @@ class VerificationCenterScreen extends StatelessWidget {
             const SizedBox(height: 12),
 
             _privilegeRow(
-              iconAsset: 'assets/icons/bank.png',
+              // iconAsset: 'assets/icons/bank.png',
               label: 'Deposit Limit',
               valueWidget: Text(
                 'Unlimited NGN',
@@ -69,27 +69,27 @@ class VerificationCenterScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 10),
-            _privilegeRow(
-              iconAsset: 'assets/icons/bank.png',
-              label: 'Withdrawal Limit',
-              valueWidget: RichText(
-                text: TextSpan(
-                  children: [
-                    TextSpan(
-                      text: '500,000 NGN',
-                      style: AppTheme.inter(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
-                    ),
-                    TextSpan(
-                      text: ' / Daily',
-                      style: AppTheme.inter(color: Colors.white38, fontSize: 13),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+            // _privilegeRow(
+            //   // iconAsset: 'assets/icons/bank.png',
+            //   label: 'Withdrawal Limit',
+            //   valueWidget: RichText(
+            //     text: TextSpan(
+            //       children: [
+            //         TextSpan(
+            //           text: '500,000 NGN',
+            //           style: AppTheme.inter(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
+            //         ),
+            //         TextSpan(
+            //           text: ' / Daily',
+            //           style: AppTheme.inter(color: Colors.white38, fontSize: 13),
+            //         ),
+            //       ],
+            //     ),
+            //   ),
+            // ),
             const SizedBox(height: 10),
             _privilegeRow(
-              iconAsset: 'assets/icons/bank.png',
+              // iconAsset: 'assets/icons/bank.png',
               label: 'P2P Trading',
               valueWidget: Text(
                 'Active',
@@ -97,63 +97,63 @@ class VerificationCenterScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 10),
-            _privilegeRow(
-              iconAsset: 'assets/icons/bank.png',
-              label: 'Spot Trading',
-              valueWidget: Text(
-                'Active',
-                style: AppTheme.inter(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
-              ),
-            ),
+            // _privilegeRow(
+            //   // iconAsset: 'assets/icons/bank.png',
+            //   label: 'Spot Trading',
+            //   valueWidget: Text(
+            //     'Active',
+            //     style: AppTheme.inter(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
+            //   ),
+            // ),
             const SizedBox(height: 24),
 
             // Increase limits banner with thumbs
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFF151515),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Increase your limits',
-                          style: AppTheme.inter(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
-                        ),
-                        const SizedBox(height: 6),
-                        RichText(
-                          text: TextSpan(
-                            style: AppTheme.inter(color: Colors.white54, fontSize: 12, height: 1.5),
-                            children: [
-                              const TextSpan(text: 'Verify your Government ID (BVN/NIN) to unlock Tier 2 withdrawal limits up to '),
-                              TextSpan(
-                                text: '50M NGN.',
-                                style: AppTheme.inter(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Column(
-                    children: [
-                      Icon(Icons.thumb_up_outlined, color: Colors.white38, size: 22),
-                      const SizedBox(height: 8),
-                      Icon(Icons.thumb_down_outlined, color: Colors.white38, size: 22),
-                    ],
-                  ),
-                ],
-              ),
-            ),
+            // Container(
+            //   width: double.infinity,
+            //   padding: const EdgeInsets.all(16),
+            //   decoration: BoxDecoration(
+            //     color: const Color(0xFF151515),
+            //     borderRadius: BorderRadius.circular(14),
+            //     border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+            //   ),
+            //   child: Row(
+            //     crossAxisAlignment: CrossAxisAlignment.start,
+            //     children: [
+            //       Expanded(
+            //         child: Column(
+            //           crossAxisAlignment: CrossAxisAlignment.start,
+            //           children: [
+            //             Text(
+            //               'Increase your limits',
+            //               style: AppTheme.inter(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+            //             ),
+            //             const SizedBox(height: 6),
+            //             RichText(
+            //               text: TextSpan(
+            //                 style: AppTheme.inter(color: Colors.white54, fontSize: 12, height: 1.5),
+            //                 children: [
+            //                   const TextSpan(text: 'Verify your Government ID (BVN/NIN) to unlock Tier 2 withdrawal limits up to '),
+            //                   TextSpan(
+            //                     text: '50M NGN.',
+            //                     style: AppTheme.inter(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+            //                   ),
+            //                 ],
+            //               ),
+            //             ),
+            //           ],
+            //         ),
+            //       ),
+            //       const SizedBox(width: 12),
+            //       Column(
+            //         children: [
+            //           Icon(Icons.thumb_up_outlined, color: Colors.white38, size: 22),
+            //           const SizedBox(height: 8),
+            //           Icon(Icons.thumb_down_outlined, color: Colors.white38, size: 22),
+            //         ],
+            //       ),
+            //     ],
+            //   ),
+            // ),
             const SizedBox(height: 24),
 
             // Upgrade button — outlined gold
@@ -167,10 +167,10 @@ class VerificationCenterScreen extends StatelessWidget {
             const SizedBox(height: 14),
 
             // Start Trading — filled gold
-            _buildPrimaryButton(
-              label: 'Start Trading',
-              onTap: () => Navigator.pop(context),
-            ),
+            // _buildPrimaryButton(
+            //   label: 'Start Trading',
+            //   onTap: () => Navigator.pop(context),
+            // ),
             const SizedBox(height: 40),
           ],
         ),
@@ -178,65 +178,59 @@ class VerificationCenterScreen extends StatelessWidget {
     );
   }
 
-  Widget _privilegeRow({
-    required String iconAsset,
-    required String label,
-    required Widget valueWidget,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-      decoration: BoxDecoration(
-        color: const Color(0xFF151515),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+Widget _privilegeRow({
+  required String label,
+  required Widget valueWidget,
+}) {
+  return Container(
+    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+    decoration: BoxDecoration(
+      color: const Color(0xFF151515),
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(
+        color: Colors.white.withValues(alpha: 0.05),
       ),
-      child: Row(
-        children: [
-          // Green square icon
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: const Color(0xFF2ECC71),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Center(
-              child: Image.asset(
-                iconAsset,
-                width: 22,
-                height: 22,
-                color: Colors.white,
-                errorBuilder: (_, __, ___) =>
-                    const Icon(Icons.account_balance_rounded, color: Colors.white, size: 20),
+    ),
+    child: Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: AppTheme.inter(
+                  color: Colors.white54,
+                  fontSize: 12,
+                ),
               ),
+              const SizedBox(height: 4),
+              valueWidget,
+            ],
+          ),
+        ),
+
+        // Gold outlined checkmark
+        Container(
+          width: 28,
+          height: 28,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: const Color(0xFFE4B53E),
+              width: 1.5,
             ),
           ),
-          const SizedBox(width: 14),
-          // Label + value stacked
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label, style: AppTheme.inter(color: Colors.white54, fontSize: 12)),
-                const SizedBox(height: 4),
-                valueWidget,
-              ],
-            ),
+          child: const Icon(
+            Icons.check,
+            color: Color(0xFFE4B53E),
+            size: 16,
           ),
-          // Gold outlined checkmark
-          Container(
-            width: 28,
-            height: 28,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: const Color(0xFFE4B53E), width: 1.5),
-            ),
-            child: const Icon(Icons.check, color: Color(0xFFE4B53E), size: 16),
-          ),
-        ],
-      ),
-    );
-  }
+        ),
+      ],
+    ),
+  );
+}
 
   Widget _buildOutlinedButton({required String label, required VoidCallback onTap}) {
     return GestureDetector(

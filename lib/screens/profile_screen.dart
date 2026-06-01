@@ -229,15 +229,15 @@ const SizedBox(height: 30),
                 _buildMenuItem(
                   imagePath: 'assets/icons/finger-print.png',
                   title: 'Identity Verification',
-                  subtitle: 'Level 1 Limits: 50k NGN/Day',
+                  subtitle: 'Level 1',
                  onTap: () {
-  _showComingSoon(context);
+  // _showComingSoon(context);
 
   // TODO: enable when KYC is ready
-  // Navigator.push(
-  //   context,
-  //   MaterialPageRoute(builder: (_) => const VerificationCenterScreen()),
-  // );
+  Navigator.push(
+    context,
+    MaterialPageRoute(builder: (_) => const VerificationCenterScreen()),
+  );
 },
        trailing: SizedBox(
   height: 20,
@@ -248,7 +248,7 @@ const SizedBox(height: 30),
       borderRadius: BorderRadius.circular(12),
     ),
     child: Text(
-      'Coming Soon',
+      'Unverified',
       style: AppTheme.inter(
         color: const Color(0xFFE4B53E),
         fontSize: 10,
@@ -261,15 +261,15 @@ const SizedBox(height: 30),
               ]),
               const SizedBox(height: 16),
               _buildMenuGroup([
-                _buildMenuItem(
-                  imagePath: 'assets/icons/payment.png',
-                  title: 'Payment Methods',
-                  subtitle: 'Manage NGN Bank Accounts',
-                  trailing: _comingSoonBadge(),
-                  onTap: () {
-                    _showComingSoon(context);
-                  },
-                ),
+                // _buildMenuItem(
+                //   imagePath: 'assets/icons/payment.png',
+                //   title: 'Payment Methods',
+                //   subtitle: 'Manage NGN Bank Accounts',
+                //   trailing: _comingSoonBadge(),
+                //   onTap: () {
+                //     _showComingSoon(context);
+                //   },
+                // ),
                 _buildMenuItem(
                   imagePath: 'assets/icons/security.png',
                   title: 'Security Center',
@@ -284,19 +284,19 @@ const SizedBox(height: 30),
                     ],
                   ),
                 ),
-                _buildMenuItem(
-                  imagePath: 'assets/icons/history.png',
-                  title: 'Transaction History',
-                  subtitle: 'Spot, P2P, Withdrawals',
-                  trailing: _comingSoonBadge(),
-                  onTap: () {
-                    _showComingSoon(context);
-                    // Navigator.push(
-                    //   context,
-                    //   MaterialPageRoute(builder: (context) => const TradeScreen()),
-                    // );
-                  },
-                ),
+                // _buildMenuItem(
+                //   imagePath: 'assets/icons/history.png',
+                //   title: 'Transaction History',
+                //   subtitle: 'Spot, P2P, Withdrawals',
+                //   trailing: _comingSoonBadge(),
+                //   onTap: () {
+                //     _showComingSoon(context);
+                //     // Navigator.push(
+                //     //   context,
+                //     //   MaterialPageRoute(builder: (context) => const TradeScreen()),
+                //     // );
+                //   },
+                // ),
                 // _buildMenuItem(
                 //   icon: Icons.campaign_outlined,
                 //   title: 'My Ads',
@@ -335,10 +335,10 @@ const SizedBox(height: 30),
   _showComingSoon(context);
 
   // TODO: enable later
-  // Navigator.push(
-  //   context,
-  //   MaterialPageRoute(builder: (_) => const CustomerSupportScreen()),
-  // );
+  Navigator.push(
+    context,
+    MaterialPageRoute(builder: (_) => const CustomerSupportScreen()),
+  );
 },
                 ),
                 _buildMenuItem(
@@ -350,10 +350,10 @@ const SizedBox(height: 30),
                       _showComingSoon(context);
 
                       // TODO: enable later
-                      // Navigator.push(
-                      //   context,
-                      //   MaterialPageRoute(builder: (context) => const SettingsScreen()),
-                      // );
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const SettingsScreen()),
+                      );
                   },
                 ),
                 _buildMenuItem(
