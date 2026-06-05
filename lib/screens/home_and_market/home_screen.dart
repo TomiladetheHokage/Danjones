@@ -242,13 +242,8 @@ class _CryptoDashboardState extends State<CryptoDashboard> {
                             await Clipboard.setData(
                               ClipboardData(text: address),
                             );
-
                             if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Wallet address copied'),
-                                ),
-                              );
+                              _showCopiedToast(context);
                             }
                           },
                     child: Row(
@@ -272,8 +267,11 @@ class _CryptoDashboardState extends State<CryptoDashboard> {
                 },
               ),
             ),
-            Image.asset("assets/icons/Notification-icon.png", 
-              width: 28, height: 28, color: const Color(0xFFE4B53E)),
+            GestureDetector(
+              onTap: () => _showComingSoon(context),
+              child: Image.asset("assets/icons/Notification-icon.png",
+                width: 28, height: 28, color: const Color(0xFFE4B53E)),
+            ),
           ],
         ),
       ),
@@ -347,7 +345,75 @@ class _CryptoDashboardState extends State<CryptoDashboard> {
     );
   }
 
-SliverToBoxAdapter _buildBalanceSection() {
+  void _showCopiedToast(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withOpacity(0.6),
+      builder: (_) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1C1D21),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.white.withOpacity(0.05)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE4B53E).withOpacity(0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.copy_rounded,
+                    color: Color(0xFFE4B53E),
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Copied',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        'Wallet address copied to clipboard.',
+                        style: TextStyle(
+                          color: Colors.white54,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: const Icon(Icons.close, color: Colors.white54),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+
+  SliverToBoxAdapter _buildBalanceSection() {
     return SliverToBoxAdapter(
       child: Center(
         child: Container(

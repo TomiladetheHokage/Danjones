@@ -5,7 +5,6 @@ import '../theme/app_theme.dart';
 import '../services/crypto_service.dart';
 import '../models/crypto_asset.dart';
 import 'deposit_select_coin_screen.dart';
-import 'main_shell.dart';
 import 'home_and_market/market_asset_screen.dart';
 import 'withdraw/withdraw_select_coin_screen.dart';
 
@@ -137,68 +136,149 @@ class _AssetDetailsScreenState extends State<AssetDetailsScreen> {
   }
 
   Widget _buildActionButtons() {
-  return Row(
-    mainAxisAlignment: MainAxisAlignment.center,
-    children: [
-      _buildActionButton(
-        'assets/icons/deposit.png',
-        'Deposit',
-        onTap: () {
-          Navigator.of(context, rootNavigator: true).push(
-            MaterialPageRoute(
-              builder: (context) => const DepositSelectCoinScreen(),
-            ),
-          );
-        },
-      ),
-
-      const SizedBox(width: 24),
-
-      _buildActionButton(
-        'assets/icons/withdraw.png',
-        'Withdraw',
-        onTap: () {
-          Navigator.of(context, rootNavigator: true).push(
-            MaterialPageRoute(
-              builder: (_) => WithdrawSelectCoinScreen(
-                preselected: widget.wallet,
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        _buildActionButton(
+          'assets/icons/deposit.png',
+          'Deposit',
+          onTap: () {
+            Navigator.of(context, rootNavigator: true).push(
+              MaterialPageRoute(
+                builder: (context) => const DepositSelectCoinScreen(),
               ),
-            ),
-          );
-        },
-      ),
+            );
+          },
+        ),
 
-      const SizedBox(width: 24),
+        const SizedBox(width: 24),
 
-      _buildActionButton(
-        'assets/icons/buy.png',
-        'Buy',
-      ),
+        _buildActionButton(
+          'assets/icons/withdraw.png',
+          'Withdraw',
+          onTap: () {
+            Navigator.of(context, rootNavigator: true).push(
+              MaterialPageRoute(
+                builder: (_) => WithdrawSelectCoinScreen(
+                  preselected: widget.wallet,
+                ),
+              ),
+            );
+          },
+        ),
 
-      const SizedBox(width: 24),
+        const SizedBox(width: 24),
 
-      _buildActionButton(
-        'assets/icons/swap.png',
-        'Swap',
-        onTap: () {
-          Navigator.of(context, rootNavigator: true).pop();
-          mainShellKey.currentState?.setTab(2);
-        },
-      ),
-    ],
-  );
-}
+        // Buy — coming soon, no routing
+        _buildActionButton(
+          'assets/icons/buy.png',
+          'Buy',
+          comingSoon: true,
+        ),
 
-  Widget _buildActionButton(String iconPath, String label, {VoidCallback? onTap}) {
+        const SizedBox(width: 24),
+
+        // Swap — coming soon, no routing
+        _buildActionButton(
+          'assets/icons/swap.png',
+          'Swap',
+          comingSoon: true,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActionButton(String iconPath, String label, {VoidCallback? onTap, bool comingSoon = false}) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: comingSoon ? () => _showComingSoon() : onTap,
       child: Column(
         children: [
-          Image.asset(iconPath, width: 65, height: 65),
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Image.asset(iconPath, width: 65, height: 65),
+              if (comingSoon)
+                Positioned(
+                  top: -2,
+                  right: -8,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE4B53E),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      'Coming Soon',
+                      style: AppTheme.inter(
+                        color: Colors.black,
+                        fontSize: 8,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
           const SizedBox(height: 8),
           Text(label, style: AppTheme.inter(fontSize: 13, color: Colors.white)),
         ],
       ),
+    );
+  }
+
+  void _showComingSoon() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withOpacity(0.6),
+      builder: (_) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1C1D21),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.white.withOpacity(0.05)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE4B53E).withOpacity(0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.rocket_launch, color: Color(0xFFE4B53E), size: 20),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: const [
+                      Text(
+                        'Coming Soon',
+                        style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        'This feature is still in development.',
+                        style: TextStyle(color: Colors.white54, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: const Icon(Icons.close, color: Colors.white54),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 

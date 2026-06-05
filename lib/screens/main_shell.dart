@@ -57,19 +57,36 @@ class MainShellState extends State<MainShell> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF0A0A0A),
-      body: IndexedStack(
-        index: _currentIndex,
-        children: [
-          _buildNavigator(0, const CryptoDashboard()),
-          _buildNavigator(1, const MarketScreen()),
-          _buildNavigator(2, const SwapScreen()),
-          _buildNavigator(3, const AssetsScreen()),
-          _buildNavigator(4, const ProfileScreen()),
-        ],
+    return WillPopScope(
+      onWillPop: () async {
+        // Try to pop within the current tab's navigator first
+        final currentNav = _navigatorKeys[_currentIndex].currentState;
+        if (currentNav != null && currentNav.canPop()) {
+          currentNav.pop();
+          return false;
+        }
+        // If we're not on the home tab, go back to home tab
+        if (_currentIndex != 0) {
+          setState(() => _currentIndex = 0);
+          return false;
+        }
+        // Allow app to exit only from home tab
+        return true;
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFF0A0A0A),
+        body: IndexedStack(
+          index: _currentIndex,
+          children: [
+            _buildNavigator(0, const CryptoDashboard()),
+            _buildNavigator(1, const MarketScreen()),
+            _buildNavigator(2, const SwapScreen()),
+            _buildNavigator(3, const AssetsScreen()),
+            _buildNavigator(4, const ProfileScreen()),
+          ],
+        ),
+        bottomNavigationBar: _buildBottomNav(),
       ),
-      bottomNavigationBar: _buildBottomNav(),
     );
   }
 

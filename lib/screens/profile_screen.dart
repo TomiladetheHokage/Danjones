@@ -55,10 +55,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
+        automaticallyImplyLeading: false,
         title: Text(
           'Profile',
           style: AppTheme.inter(
@@ -71,7 +68,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         actions: [
           IconButton(
             icon: Image.asset("assets/icons/Notification-icon.png", width: 24, height: 24, color: Colors.white),
-            onPressed: () {},
+            onPressed: () => _showComingSoon(context),
           ),
         ],
       ),
@@ -166,60 +163,36 @@ Container(
       colors: [Color(0xFFE4B53E), Color(0xFFB88A2D)],
     ),
   ),
-  child: Stack(
-    clipBehavior: Clip.none,
-    alignment: Alignment.center,
-    children: [
-      ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.transparent,
-          foregroundColor: Colors.black,
-          shadowColor: Colors.transparent,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(19),
-          ),
-        ),
-        onPressed: () {
-          _showComingSoon(context);
-        },
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.edit, size: 16),
-            const SizedBox(width: 6),
-            Text(
-              'Edit Profile',
-              style: AppTheme.inter(
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
-                color: Colors.black,
-              ),
-            ),
-          ],
-        ),
+  child: ElevatedButton(
+    style: ElevatedButton.styleFrom(
+      backgroundColor: Colors.transparent,
+      foregroundColor: Colors.black,
+      shadowColor: Colors.transparent,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(19),
       ),
-
-      // Badge overlay (NOT inside Row)
-      Positioned(
-        top: -6,
-        right: -6,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-          decoration: BoxDecoration(
+    ),
+    onPressed: () {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const EditProfileScreen()),
+      );
+    },
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const Icon(Icons.edit, size: 16),
+        const SizedBox(width: 6),
+        Text(
+          'Edit Profile',
+          style: AppTheme.inter(
+            fontSize: 13,
+            fontWeight: FontWeight.bold,
             color: Colors.black,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Text(
-            'Coming Soon',
-            style: AppTheme.inter(
-              fontSize: 9,
-              fontWeight: FontWeight.w600,
-              color: const Color(0xFFE4B53E),
-            ),
           ),
         ),
-      ),
-    ],
+      ],
+    ),
   ),
 ),
 const SizedBox(height: 30),
@@ -345,9 +318,9 @@ const SizedBox(height: 30),
                   imagePath: 'assets/icons/settings.png',
                   title: 'Settings',
                   subtitle: 'Language, Theme',
-                  trailing: _comingSoonBadge(),
+                  // trailing: _comingSoonBadge(),
                   onTap: () {
-                      _showComingSoon(context);
+                      // _showComingSoon(context);
 
                       // TODO: enable later
                       Navigator.push(

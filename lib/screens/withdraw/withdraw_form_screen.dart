@@ -10,6 +10,7 @@ import '../../models/wallet.dart';
 import '../../services/api_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/custom_dialog.dart';
+import 'qr_scanner_screen.dart';
 
 class WithdrawFormScreen extends StatefulWidget {
   final Wallet wallet;
@@ -113,6 +114,17 @@ class _WithdrawFormScreenState extends State<WithdrawFormScreen> {
     final data = await Clipboard.getData('text/plain');
     if (data?.text != null) {
       _addressController.text = data!.text!;
+      setState(() {});
+    }
+  }
+
+  Future<void> _scanQr() async {
+    final result = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(builder: (_) => const QrScannerScreen()),
+    );
+    if (result != null && result.isNotEmpty && mounted) {
+      _addressController.text = result;
       setState(() {});
     }
   }
@@ -340,13 +352,22 @@ class _WithdrawFormScreenState extends State<WithdrawFormScreen> {
           GestureDetector(
             onTap: _pasteAddress,
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              child: Text(
-                'Paste',
-                style: AppTheme.inter(
-                    color: const Color(0xFFE4B53E),
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600),
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Icon(
+                Icons.content_paste_rounded,
+                color: const Color(0xFFE4B53E),
+                size: 20,
+              ),
+            ),
+          ),
+          GestureDetector(
+            onTap: _scanQr,
+            child: Padding(
+              padding: const EdgeInsets.only(left: 4, right: 14),
+              child: Icon(
+                Icons.qr_code_scanner_rounded,
+                color: const Color(0xFFE4B53E),
+                size: 20,
               ),
             ),
           ),

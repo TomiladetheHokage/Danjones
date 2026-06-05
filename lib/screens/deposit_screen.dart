@@ -1,9 +1,17 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutterwave_standard/flutterwave.dart';
-import '../theme/app_theme.dart';
+
+import '../models/currency.dart';
+import '../models/wallet.dart';
 import '../services/api_service.dart';
 import '../services/data_store.dart';
+import '../theme/app_theme.dart';
+import '../widgets/custom_dialog.dart';
 import 'deposit_select_coin_screen.dart';
+import 'receive_screen.dart';
 
 class DepositScreen extends StatefulWidget {
   const DepositScreen({super.key});
@@ -15,12 +23,82 @@ class DepositScreen extends StatefulWidget {
 class _DepositScreenState extends State<DepositScreen> {
   bool _isCryptoTab = true;
   
+  // Crypto coin list state
+  List<Currency> _currencies = [];
+  bool _isLoadingCoins = true;
+  String? _coinsError;
+  String _search = '';
+  int? _processingId;
+
   // Fiat Form State
   String _selectedMethod = 'Bank Transfer';
   final TextEditingController _amountController = TextEditingController();
   bool _isLoading = false;
   bool _isVerifying = false;
   String? _txRef;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCurrencies();
+  }
+
+  Future<void> _loadCurrencies() async {
+    try {
+      final all = await ApiService.getCurrencies();
+      if (!mounted) return;
+      setState(() {
+        _currencies = all.where((c) => c.isCrypto && c.isActive).toList();
+        _isLoadingCoins = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _coinsError = e.toString().replaceAll('Exception: ', '');
+        _isLoadingCoins = false;
+      });
+    }
+  }
+
+  List<Currency> get _filteredCurrencies {
+    final q = _search.trim().toLowerCase();
+    if (q.isEmpty) return _currencies;
+    return _currencies
+        .where((c) =>
+            c.symbol.toLowerCase().contains(q) ||
+            c.name.toLowerCase().contains(q))
+        .toList();
+  }
+
+  Future<void> _onCurrencyTap(Currency currency) async {
+    if (_processingId != null) return;
+    setState(() => _processingId = currency.id);
+    try {
+      final existing = DataStore.instance.dashboard.value?.wallets
+          .where((w) => w.currencyId == currency.id)
+          .firstOrNull;
+      Wallet wallet;
+      if (existing != null) {
+        wallet = existing;
+      } else {
+        wallet = await ApiService.createWallet(currencyId: currency.id);
+        try {
+          final updated = await ApiService.getDashboardData();
+          await DataStore.instance.updateDashboard(updated);
+        } catch (_) {}
+      }
+      if (!mounted) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => ReceiveScreen(wallet: wallet)),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      _showError(e.toString().replaceAll('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => _processingId = null);
+    }
+  }
 
   @override
   void dispose() {
@@ -343,25 +421,140 @@ class _DepositScreenState extends State<DepositScreen> {
   }
 
   // ==========================================
-  // CRYPTO TAB — redirects to full coin selector
+  // CRYPTO TAB — inline coin list
   // ==========================================
   Widget _buildCryptoView() {
-    // Push the full coin list immediately and pop back to fiat tab if user
-    // navigates back. We use a post-frame callback so the tab switch animation
-    // completes before the push.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || !_isCryptoTab) return;
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const DepositSelectCoinScreen()),
-      ).then((_) {
-        // When user comes back, switch to fiat tab so the crypto tab doesn't
-        // immediately push again.
-        if (mounted) setState(() => _isCryptoTab = false);
-      });
-    });
+    return Column(
+      children: [
+        // Search bar
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
+          child: Container(
+            height: 48,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1A1A1A),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.white.withOpacity(0.05)),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    cursorColor: Colors.white24,
+                    style: AppTheme.inter(color: Colors.white, fontSize: 14),
+                    onChanged: (v) => setState(() => _search = v),
+                    decoration: InputDecoration(
+                      hintText: 'Search coin',
+                      hintStyle: AppTheme.inter(color: Colors.white24, fontSize: 14),
+                      border: InputBorder.none,
+                      isDense: true,
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  ),
+                ),
+                Icon(Icons.search, color: Colors.white.withOpacity(0.2), size: 22),
+              ],
+            ),
+          ),
+        ),
+        // List
+        Expanded(child: _buildCoinList()),
+      ],
+    );
+  }
 
-    return const SizedBox.shrink();
+  Widget _buildCoinList() {
+    if (_isLoadingCoins) {
+      return const Center(child: CircularProgressIndicator(color: Color(0xFFE4B53E)));
+    }
+    if (_coinsError != null) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(_coinsError!, textAlign: TextAlign.center,
+                style: AppTheme.inter(color: Colors.white38, fontSize: 14)),
+            const SizedBox(height: 16),
+            TextButton(
+              onPressed: () {
+                setState(() { _isLoadingCoins = true; _coinsError = null; });
+                _loadCurrencies();
+              },
+              child: Text('Retry', style: AppTheme.inter(color: const Color(0xFFE4B53E), fontSize: 14)),
+            ),
+          ],
+        ),
+      );
+    }
+    final list = _filteredCurrencies;
+    if (list.isEmpty) {
+      return Center(child: Text('No coins found',
+          style: AppTheme.inter(color: Colors.white38, fontSize: 14)));
+    }
+    return ListView.builder(
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.only(bottom: 32),
+      itemCount: list.length,
+      itemBuilder: (_, i) => _buildCurrencyRow(list[i]),
+    );
+  }
+
+  Widget _buildCurrencyRow(Currency currency) {
+    final imageUrl = currency.fullImageUrl;
+    final isProcessing = _processingId == currency.id;
+    return InkWell(
+      onTap: isProcessing ? null : () => _onCurrencyTap(currency),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 40,
+              height: 40,
+              child: ClipOval(
+                child: imageUrl.startsWith('http')
+                    ? CachedNetworkImage(
+                        imageUrl: imageUrl,
+                        width: 40,
+                        height: 40,
+                        fit: BoxFit.contain,
+                        placeholder: (_, __) => Container(
+                          color: Colors.white.withOpacity(0.05),
+                          child: const Center(
+                            child: SizedBox(width: 14, height: 14,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFE4B53E))),
+                          ),
+                        ),
+                        errorWidget: (_, __, ___) =>
+                            const Icon(Icons.token, color: Colors.white24, size: 24),
+                      )
+                    : const Icon(Icons.token, color: Colors.white24, size: 24),
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(currency.symbol.toUpperCase(),
+                      style: AppTheme.inter(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.white)),
+                  const SizedBox(height: 2),
+                  Text(currency.name,
+                      style: AppTheme.inter(fontSize: 12, color: Colors.white38)),
+                ],
+              ),
+            ),
+            if (isProcessing)
+              const SizedBox(width: 20, height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFE4B53E)))
+            else
+              Icon(Icons.chevron_right_rounded,
+                  color: Colors.white.withOpacity(0.2), size: 20),
+          ],
+        ),
+      ),
+    );
   }
 
   // ==========================================
