@@ -426,6 +426,29 @@ class ApiService {
     }
   }
 
+  static Future<Map<String, dynamic>> completeP2pTrade({
+    required int tradeId,
+  }) async {
+    final response = await _makeRequest(
+      () => http.post(
+        Uri.parse('$baseUrl/p2p/trades/$tradeId/complete'),
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $authToken',
+        },
+      ),
+      requestName: 'COMPLETE_P2P_TRADE',
+    );
+
+    final data = jsonDecode(response.body);
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return data;
+    } else {
+      final errMsg = data['message'] ?? data['error'] ?? 'Server error (${response.statusCode})';
+      throw Exception(errMsg);
+    }
+  }
+
   static Future<Map<String, dynamic>> closeP2pAd({
     required int adId,
   }) async {

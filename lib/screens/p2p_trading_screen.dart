@@ -63,7 +63,7 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'How much ${ad.currencySymbol} do you want to buy?',
+                  'How much NGN do you want to spend?',
                   style: AppTheme.inter(color: Colors.white54, fontSize: 14),
                 ),
                 const SizedBox(height: 20),
@@ -98,6 +98,20 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> {
                   'Limits: ₦${ad.minLimit.toStringAsFixed(2)} – ₦${ad.maxLimit.toStringAsFixed(2)}',
                   style: AppTheme.inter(color: const Color(0xFFE4B53E), fontSize: 12),
                 ),
+                const SizedBox(height: 8),
+                Builder(builder: (_) {
+                  final ngn = double.tryParse(amountController.text) ?? 0;
+                  final crypto = ngn > 0 ? ngn / ad.price : 0.0;
+                  return Text(
+                    ngn > 0
+                        ? 'You receive ≈ ${crypto.toStringAsFixed(8)} ${ad.currencySymbol}'
+                        : 'Enter amount to see ${ad.currencySymbol} equivalent',
+                    style: AppTheme.inter(
+                      color: ngn > 0 ? Colors.white70 : Colors.white30,
+                      fontSize: 12,
+                    ),
+                  );
+                }),
                 const SizedBox(height: 24),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -496,7 +510,7 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> {
                   } else {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => const P2PSellerReleaseScreen()),
+                      MaterialPageRoute(builder: (_) => const P2PSellerReleaseScreen()),
                     );
                   }
                 },

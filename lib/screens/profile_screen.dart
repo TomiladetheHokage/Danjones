@@ -12,6 +12,7 @@ import 'kyc/verification_center_screen.dart';
 import 'legal/about_legal_screen.dart';
 import '../services/api_service.dart';
 import '../services/data_store.dart';
+import '../services/crypto_service.dart';
 import '../models/user_profile.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -28,6 +29,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     try {
       await ApiService.logout();
       await DataStore.instance.clear();
+      CryptoService.invalidateCache(); // clear market price cache
 
       if (!mounted) return;
       Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
@@ -263,30 +265,30 @@ const SizedBox(height: 30),
                     ],
                   ),
                 ),
-                // _buildMenuItem(
-                //   imagePath: 'assets/icons/history.png',
-                //   title: 'Transaction History',
-                //   subtitle: 'Spot, P2P, Withdrawals',
-                //   trailing: _comingSoonBadge(),
-                //   onTap: () {
-                //     _showComingSoon(context);
-                //     // Navigator.push(
-                //     //   context,
-                //     //   MaterialPageRoute(builder: (context) => const TradeScreen()),
-                //     // );
-                //   },
-                // ),
-                // _buildMenuItem(
-                //   icon: Icons.campaign_outlined,
-                //   title: 'My Ads',
-                //   subtitle: 'Manage your P2P buy/sell ads',
-                //   onTap: () {
-                //     Navigator.push(
-                //       context,
-                //       MaterialPageRoute(builder: (context) => const MyAdsScreen()),
-                //     );
-                //   },
-                // ),
+                _buildMenuItem(
+                  imagePath: 'assets/icons/history.png',
+                  title: 'Transaction History',
+                  subtitle: 'Spot, P2P, Withdrawals',
+                  // trailing: _comingSoonBadge(),
+                  onTap: () {
+                    // _showComingSoon(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const TradeScreen()),
+                    );
+                  },
+                ),
+                _buildMenuItem(
+                  icon: Icons.campaign_outlined,
+                  title: 'My Ads',
+                  subtitle: 'Manage your P2P buy/sell ads',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const MyAdsScreen()),
+                    );
+                  },
+                ),
               ]),
               const SizedBox(height: 16),
               _buildMenuGroup([

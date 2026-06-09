@@ -1,7 +1,9 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../models/p2p_trade.dart';
 import '../services/api_service.dart';
+import '../services/data_store.dart';
 import '../theme/app_theme.dart';
 
 class TradeDetailsScreen extends StatefulWidget {
@@ -16,6 +18,13 @@ class TradeDetailsScreen extends StatefulWidget {
 class _TradeDetailsScreenState extends State<TradeDetailsScreen> {
   bool _isMarkingPaid = false;
   bool _isCanceling = false;
+  bool _isCompleting = false;
+
+  // Determine if the logged-in user is the seller of this trade
+  bool get _isSeller {
+    final currentUserId = DataStore.instance.dashboard.value?.user?.id;
+    return currentUserId != null && currentUserId == widget.trade.sellerId;
+  }
 
   String _formatMoney(double amount) {
     final fixed = amount.toStringAsFixed(2);
@@ -113,6 +122,49 @@ class _TradeDetailsScreenState extends State<TradeDetailsScreen> {
     }
   }
 
+  Future<void> _completeTrade() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1B1B1E),
+        title: Text('Mark as Completed?', style: AppTheme.inter(color: Colors.white, fontWeight: FontWeight.w700)),
+        content: Text(
+          'Confirm you have received payment for order #${widget.trade.id}. This will release the crypto to the buyer.',
+          style: AppTheme.inter(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Back', style: AppTheme.inter(color: Colors.white54, fontWeight: FontWeight.w600)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF33D17A)),
+            child: Text('Confirm', style: AppTheme.inter(color: Colors.white, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+
+    setState(() => _isCompleting = true);
+    try {
+      await ApiService.completeP2pTrade(tradeId: widget.trade.id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Trade completed successfully')),
+      );
+      Navigator.pop(context, true);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
+      );
+    } finally {
+      if (mounted) setState(() => _isCompleting = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final trade = widget.trade;
@@ -191,49 +243,65 @@ class _TradeDetailsScreenState extends State<TradeDetailsScreen> {
             _infoTile('Terms', trade.adTerms.isEmpty ? 'No specific terms' : trade.adTerms),
             const SizedBox(height: 18),
             if (trade.isPending) ...[
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: _isMarkingPaid || _isCanceling ? null : _markTradePaid,
-                  style: ElevatedButton.styleFrom(
-                    elevation: 0,
-                    backgroundColor: const Color(0xFFE4B53E),
-                    foregroundColor: Colors.black,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              // Seller sees "Mark as Completed" when trade is paid
+              if (_isSeller && trade.status.toLowerCase() == 'paid') ...[
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    onPressed: _isCompleting ? null : _completeTrade,
+                    style: ElevatedButton.styleFrom(
+                      elevation: 0,
+                      backgroundColor: const Color(0xFF33D17A),
+                      foregroundColor: Colors.black,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                    child: _isCompleting
+                        ? const SizedBox(height: 20, width: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black))
+                        : Text('Mark as Completed',
+                            style: AppTheme.inter(color: Colors.black, fontWeight: FontWeight.w700)),
                   ),
-                  child: _isMarkingPaid
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
-                        )
-                      : Text(
-                          'Mark as Paid',
-                          style: AppTheme.inter(color: Colors.black, fontWeight: FontWeight.w700),
-                        ),
                 ),
-              ),
-              const SizedBox(height: 10),
+                const SizedBox(height: 10),
+              ],
+              // Buyer sees "Mark as Paid" when trade is pending
+              if (!_isSeller && trade.status.toLowerCase() == 'pending') ...[
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    onPressed: _isMarkingPaid || _isCanceling ? null : _markTradePaid,
+                    style: ElevatedButton.styleFrom(
+                      elevation: 0,
+                      backgroundColor: const Color(0xFFE4B53E),
+                      foregroundColor: Colors.black,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                    child: _isMarkingPaid
+                        ? const SizedBox(height: 20, width: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black))
+                        : Text('Mark as Paid',
+                            style: AppTheme.inter(color: Colors.black, fontWeight: FontWeight.w700)),
+                  ),
+                ),
+                const SizedBox(height: 10),
+              ],
+              // Cancel button — available to both buyer (pending) and seller (pending/paid)
               SizedBox(
                 width: double.infinity,
                 height: 50,
                 child: OutlinedButton(
-                  onPressed: _isMarkingPaid || _isCanceling ? null : _cancelTrade,
+                  onPressed: _isMarkingPaid || _isCanceling || _isCompleting ? null : _cancelTrade,
                   style: OutlinedButton.styleFrom(
                     side: const BorderSide(color: Colors.redAccent),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   ),
                   child: _isCanceling
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.redAccent),
-                        )
-                      : Text(
-                          'Cancel Trade',
-                          style: AppTheme.inter(color: Colors.redAccent, fontWeight: FontWeight.w700),
-                        ),
+                      ? const SizedBox(height: 20, width: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.redAccent))
+                      : Text('Cancel Trade',
+                          style: AppTheme.inter(color: Colors.redAccent, fontWeight: FontWeight.w700)),
                 ),
               ),
             ],
