@@ -4,7 +4,9 @@ import '../../services/api_service.dart';
 import '../../theme/app_theme.dart';
 
 class MyAdsScreen extends StatefulWidget {
-  const MyAdsScreen({super.key});
+  final bool embedded;
+
+  const MyAdsScreen({super.key, this.embedded = false});
 
   @override
   State<MyAdsScreen> createState() => _MyAdsScreenState();
@@ -114,10 +116,13 @@ class _MyAdsScreenState extends State<MyAdsScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
+        automaticallyImplyLeading: !widget.embedded,
+        leading: widget.embedded
+            ? null
+            : IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.white),
+                onPressed: () => Navigator.pop(context),
+              ),
         title: Text(
           'My Ads',
           style: AppTheme.inter(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w700),

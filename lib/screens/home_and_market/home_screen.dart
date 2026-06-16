@@ -6,6 +6,7 @@ import '../../theme/app_theme.dart';
 import 'top_movers_screen.dart';
 import '../deposit_screen.dart';
 import '../main_shell.dart';
+import '../notifications_screen.dart';
 import '../p2p_trading_screen.dart';
 import '../profile_screen.dart';
 import '../../services/crypto_service.dart';
@@ -205,14 +206,18 @@ class _CryptoDashboardState extends State<CryptoDashboard> {
               child: ValueListenableBuilder<DashboardData?>(
                 valueListenable: DataStore.instance.dashboard,
                 builder: (context, data, _) {
-                  ImageProvider avatarImage = const AssetImage("assets/images/profile_picture.png");
+                  String? avatarUrl;
                   final user = data?.user;
                   if (user != null && user.avatar != null && user.avatar!.isNotEmpty) {
-                    avatarImage = NetworkImage('${ApiService.rootUrl}${user.avatar}');
+                    avatarUrl = ApiService.resolveUrl(user.avatar);
                   }
                   return CircleAvatar(
                     radius: 22,
-                    backgroundImage: avatarImage,
+                    backgroundColor: const Color(0xFF1C1D21),
+                    backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl) : null,
+                    child: avatarUrl == null
+                        ? const Icon(Icons.person_rounded, color: Colors.white54, size: 20)
+                        : null,
                   );
                 },
               ),
@@ -268,7 +273,11 @@ class _CryptoDashboardState extends State<CryptoDashboard> {
               ),
             ),
             GestureDetector(
-              onTap: () => _showComingSoon(context),
+              onTap: () {
+                Navigator.of(context, rootNavigator: true).push(
+                  MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+                );
+              },
               child: Image.asset("assets/icons/Notification-icon.png",
                 width: 28, height: 28, color: const Color(0xFFE4B53E)),
             ),

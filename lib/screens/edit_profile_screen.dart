@@ -1,4 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+
+import '../models/user_profile.dart';
+import '../services/api_service.dart';
+import '../services/data_store.dart';
 import '../theme/app_theme.dart';
 
 class EditProfileScreen extends StatefulWidget {
@@ -9,6 +14,152 @@ class EditProfileScreen extends StatefulWidget {
 }
 
 class _EditProfileScreenState extends State<EditProfileScreen> {
+  UserProfile? _profile;
+  ImageProvider? _avatarImage;
+  bool _isUploadingAvatar = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    try {
+      final profile = await ApiService.getUserProfile();
+      if (!mounted) return;
+      setState(() {
+        _profile = profile;
+        if (profile.avatar != null && profile.avatar!.isNotEmpty) {
+          final resolved = ApiService.resolveUrl(profile.avatar);
+          if (resolved != null) {
+            _avatarImage = NetworkImage(resolved);
+          }
+        }
+      });
+    } catch (_) {
+      // Keep default avatar if profile fetch fails.
+    }
+  }
+
+  Future<void> _changeProfilePhoto() async {
+    if (_isUploadingAvatar) return;
+
+    final picked = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 88,
+    );
+    if (picked == null) return;
+
+    setState(() => _isUploadingAvatar = true);
+
+    try {
+      final bytes = await picked.readAsBytes();
+
+      setState(() {
+        _avatarImage = MemoryImage(bytes);
+      });
+
+      await ApiService.updateProfileAvatar(
+        avatarBytes: bytes,
+        fileName: picked.name,
+      );
+
+      final dashboard = await ApiService.getDashboardData();
+      await DataStore.instance.updateDashboard(dashboard);
+      await _loadProfile();
+
+      if (!mounted) return;
+      await _showStatusPopup(
+        title: 'Profile Updated',
+        message: 'Profile photo updated successfully.',
+        icon: Icons.check_circle_rounded,
+      );
+      if (!mounted) return;
+      Navigator.pop(context, true);
+    } catch (e) {
+      if (!mounted) return;
+      await _showStatusPopup(
+        title: 'Update Failed',
+        message: e.toString().replaceAll('Exception: ', ''),
+        icon: Icons.error_outline_rounded,
+      );
+    } finally {
+      if (mounted) setState(() => _isUploadingAvatar = false);
+    }
+  }
+
+  Future<void> _showStatusPopup({
+    required String title,
+    required String message,
+    required IconData icon,
+  }) {
+    return showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withOpacity(0.6),
+      builder: (_) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1C1D21),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.white.withOpacity(0.05)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE4B53E).withOpacity(0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    icon,
+                    color: const Color(0xFFE4B53E),
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        title,
+                        style: AppTheme.inter(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        message,
+                        style: AppTheme.inter(
+                          color: Colors.white54,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: const Icon(Icons.close, color: Colors.white54),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   void _showComingSoon() {
     showModalBottomSheet(
       context: context,
@@ -112,27 +263,46 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               child: Stack(
                 alignment: Alignment.bottomRight,
                 children: [
-                  const CircleAvatar(
+                  CircleAvatar(
                     radius: 40,
-                    backgroundImage: AssetImage("assets/images/profile_picture.png"),
+                    backgroundColor: const Color(0xFF1C1D21),
+                    backgroundImage: _avatarImage,
+                    child: _avatarImage == null
+                        ? const Icon(Icons.person_rounded, color: Colors.white54, size: 34)
+                        : null,
                   ),
-                  Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE4B53E),
-                      shape: BoxShape.circle,
-                      border: Border.all(color: const Color(0xFF050505), width: 2),
+                  GestureDetector(
+                    onTap: _changeProfilePhoto,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE4B53E),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: const Color(0xFF050505), width: 2),
+                      ),
+                      child: _isUploadingAvatar
+                          ? const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.black,
+                              ),
+                            )
+                          : const Icon(Icons.camera_alt, size: 14, color: Colors.black),
                     ),
-                    child: const Icon(Icons.camera_alt, size: 14, color: Colors.black),
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 12),
             Center(
-              child: Text(
-                'Change Profile Photo',
-                style: AppTheme.inter(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500),
+              child: GestureDetector(
+                onTap: _changeProfilePhoto,
+                child: Text(
+                  _isUploadingAvatar ? 'Uploading...' : 'Change Profile Photo',
+                  style: AppTheme.inter(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500),
+                ),
               ),
             ),
             const SizedBox(height: 30),

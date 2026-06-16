@@ -5,6 +5,7 @@ import '../theme/app_theme.dart';
 import '../services/data_store.dart';
 import '../services/api_service.dart';
 import '../models/currency.dart';
+import 'p2p/p2p_payment_method_screen.dart';
 
 class CreateAdScreen extends StatefulWidget {
   const CreateAdScreen({super.key});
@@ -16,8 +17,6 @@ class CreateAdScreen extends StatefulWidget {
 class _CreateAdScreenState extends State<CreateAdScreen> {
   bool _isBuyAd = true;
   bool _isFixedPrice = true;
-  bool _isChipperSelected = false;
-  bool _isBankSelected = true;
 
   final TextEditingController _priceController = TextEditingController();
   final TextEditingController _totalAmountController = TextEditingController();
@@ -31,10 +30,30 @@ class _CreateAdScreenState extends State<CreateAdScreen> {
   Currency? _selectedAsset;
   bool _isLoadingCurrencies = true;
 
+  // Payment methods
+  List<Map<String, dynamic>> _paymentAccounts = [];
+  bool _isLoadingAccounts = true;
+  final Set<int> _selectedAccountIndexes = {};
+
   @override
   void initState() {
     super.initState();
     _fetchCurrencies();
+    _fetchPaymentAccounts();
+  }
+
+  Future<void> _fetchPaymentAccounts() async {
+    try {
+      final accounts = await ApiService.getBankAccounts();
+      if (mounted) {
+        setState(() {
+          _paymentAccounts = accounts;
+          _isLoadingAccounts = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isLoadingAccounts = false);
+    }
   }
 
   Future<void> _fetchCurrencies() async {
@@ -231,6 +250,19 @@ class _CreateAdScreenState extends State<CreateAdScreen> {
       return;
     }
 
+    if (_selectedAccountIndexes.isEmpty) {
+      _showErrorDialog("Please select at least one payment method.");
+      return;
+    }
+
+    // Use the first selected account's ID
+    final selectedAccount = _paymentAccounts[_selectedAccountIndexes.first];
+    final bankAccountId = selectedAccount['id'] as int?;
+    if (bankAccountId == null) {
+      _showErrorDialog("Could not determine the selected payment method. Please try again.");
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     try {
@@ -242,6 +274,7 @@ class _CreateAdScreenState extends State<CreateAdScreen> {
         minLimit: minLimit,
         maxLimit: maxLimit,
         terms: terms,
+        bankAccountId: bankAccountId,
       );
       if (mounted) {
         _showSuccessDialog("Your advertisement has been posted successfully.");
@@ -357,19 +390,29 @@ class _CreateAdScreenState extends State<CreateAdScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text('Payment Methods', style: AppTheme.inter(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600)),
-                Row(
-                  children: [
-                    const Icon(Icons.add_circle_outline, color: Color(0xFFE4B53E), size: 16),
-                    const SizedBox(width: 4),
-                    Text('Add New', style: AppTheme.inter(color: const Color(0xFFE4B53E), fontSize: 13, fontWeight: FontWeight.w600)),
-                  ],
+                GestureDetector(
+                  onTap: () async {
+                    final result = await Navigator.push<bool>(
+                      context,
+                      MaterialPageRoute(builder: (_) => const P2PPaymentMethodScreen()),
+                    );
+                    // Refresh payment accounts if one was added
+                    if (result == true || result == null) {
+                      _fetchPaymentAccounts();
+                    }
+                  },
+                  child: Row(
+                    children: [
+                      const Icon(Icons.add_circle_outline, color: Color(0xFFE4B53E), size: 16),
+                      const SizedBox(width: 4),
+                      Text('Add New', style: AppTheme.inter(color: const Color(0xFFE4B53E), fontSize: 13, fontWeight: FontWeight.w600)),
+                    ],
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: 16),
-            _buildPaymentMethodCard('Chipper Cash', '@MerchantUser', Colors.greenAccent, _isChipperSelected, (val) => setState(() => _isChipperSelected = val!)),
-            const SizedBox(height: 12),
-            _buildPaymentMethodCard('Bank Transfer', 'Kuda Bank •••• 8829', Colors.purpleAccent, _isBankSelected, (val) => setState(() => _isBankSelected = val!)),
+            _buildPaymentMethodsList(),
             
             const SizedBox(height: 32),
             Text('Terms & Conditions (Optional)', style: AppTheme.inter(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600)),
@@ -638,6 +681,81 @@ class _CreateAdScreenState extends State<CreateAdScreen> {
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(hint, style: AppTheme.inter(color: Colors.white54, fontSize: 16, fontWeight: FontWeight.w500)),
+    );
+  }
+
+  Widget _buildPaymentMethodsList() {
+    if (_isLoadingAccounts) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.symmetric(vertical: 16),
+          child: CircularProgressIndicator(color: Color(0xFFE4B53E), strokeWidth: 2),
+        ),
+      );
+    }
+
+    if (_paymentAccounts.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFF151515),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.white.withOpacity(0.06)),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.account_balance_outlined, color: Colors.white38, size: 20),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'No payment methods yet. Tap "Add New" to add one.',
+                style: AppTheme.inter(color: Colors.white38, fontSize: 13),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final accentColors = [
+      Colors.greenAccent,
+      Colors.purpleAccent,
+      const Color(0xFFE4B53E),
+      Colors.blueAccent,
+      Colors.redAccent,
+    ];
+
+    return Column(
+      children: _paymentAccounts.asMap().entries.map((entry) {
+        final index = entry.key;
+        final account = entry.value;
+        final bankName = account['bank_name']?.toString() ??
+            account['bank']?['name']?.toString() ??
+            'Bank Transfer';
+        final accountNumber = account['account_number']?.toString() ?? '';
+        final masked = accountNumber.length > 4
+            ? '${bankName}  •••• ${accountNumber.substring(accountNumber.length - 4)}'
+            : bankName;
+        final isSelected = _selectedAccountIndexes.contains(index);
+        final accent = accentColors[index % accentColors.length];
+
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: _buildPaymentMethodCard(
+            bankName,
+            masked,
+            accent,
+            isSelected,
+            (val) => setState(() {
+              if (val == true) {
+                _selectedAccountIndexes.add(index);
+              } else {
+                _selectedAccountIndexes.remove(index);
+              }
+            }),
+          ),
+        );
+      }).toList(),
     );
   }
 

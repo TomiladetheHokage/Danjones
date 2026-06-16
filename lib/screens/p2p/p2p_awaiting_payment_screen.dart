@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
+import 'package:image_picker/image_picker.dart';
 import 'dart:async';
+import 'dart:io';
+import 'dart:typed_data';
 import '../../theme/app_theme.dart';
 import '../../services/api_service.dart';
 import 'p2p_order_review_screen.dart';
@@ -14,6 +18,9 @@ class P2PAwaitingPaymentScreen extends StatefulWidget {
   final String currencyImage;
   final String sellerName;
   final DateTime? createdAt;
+  final String? bankName;
+  final String? bankAccountNumber;
+  final String? bankAccountName;
 
   const P2PAwaitingPaymentScreen({
     super.key,
@@ -25,6 +32,9 @@ class P2PAwaitingPaymentScreen extends StatefulWidget {
     required this.currencyImage,
     required this.sellerName,
     this.createdAt,
+    this.bankName,
+    this.bankAccountNumber,
+    this.bankAccountName,
   });
 
   @override
@@ -35,9 +45,15 @@ class _P2PAwaitingPaymentScreenState extends State<P2PAwaitingPaymentScreen> {
   late Timer _timer;
   int _secondsRemaining = 900; // 15 minutes
   bool _isLoading = false;
-  static const String _dummyBankName = 'Kuda Microfinance Bank';
-  static const String _dummyAccountNumber = '2039 485 722';
-  static const String _dummyStatus = 'Online';
+  dynamic _paymentProof; // XFile or File, depending on platform
+
+  bool get _hasBankDetails =>
+      widget.bankName != null && 
+      widget.bankName!.isNotEmpty && 
+      widget.bankAccountNumber != null && 
+      widget.bankAccountNumber!.isNotEmpty;
+
+  String get _statusDisplay => _hasBankDetails ? 'Online' : 'Pending';
 
   @override
   void initState() {
@@ -92,16 +108,118 @@ class _P2PAwaitingPaymentScreenState extends State<P2PAwaitingPaymentScreen> {
   Future<void> _copyValue(String value, String label) async {
     await Clipboard.setData(ClipboardData(text: value));
     if (!mounted) return;
+    ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$label copied')),
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle_rounded, color: Color(0xFFE4B53E), size: 20),
+            const SizedBox(width: 10),
+            Text(
+              '$label copied',
+              style: AppTheme.inter(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: const Color(0xFF1E1E1E),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: const Color(0xFFE4B53E).withOpacity(0.3)),
+        ),
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+        duration: const Duration(seconds: 2),
+        elevation: 6,
+      ),
     );
   }
 
+  Future<void> _pickPaymentProof() async {
+    // Let the user choose between camera and gallery via a bottom sheet
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      backgroundColor: const Color(0xFF1A1A1E),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              margin: const EdgeInsets.only(top: 10, bottom: 16),
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.white24,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            Text(
+              'Upload Payment Proof',
+              style: AppTheme.inter(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE4B53E).withOpacity(0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.photo_library_rounded, color: Color(0xFFE4B53E), size: 20),
+              ),
+              title: Text('Choose from Gallery', style: AppTheme.inter(color: Colors.white, fontSize: 14)),
+              onTap: () => Navigator.pop(context, ImageSource.gallery),
+            ),
+            ListTile(
+              leading: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE4B53E).withOpacity(0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.camera_alt_rounded, color: Color(0xFFE4B53E), size: 20),
+              ),
+              title: Text('Take a Photo', style: AppTheme.inter(color: Colors.white, fontSize: 14)),
+              onTap: () => Navigator.pop(context, ImageSource.camera),
+            ),
+            const SizedBox(height: 12),
+          ],
+        ),
+      ),
+    );
+
+    if (source == null) return;
+
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: source, imageQuality: 85);
+    if (picked != null && mounted) {
+      setState(() => _paymentProof = picked);
+    }
+  }
+
   Future<void> _handleMarkPaid() async {
+    if (_paymentProof == null) {
+      _showErrorDialog('Please upload your payment proof before proceeding.');
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     try {
-      await ApiService.markP2pTradePaid(tradeId: widget.tradeId);
+      final fileBytes = await _paymentProof.readAsBytes();
+      await ApiService.markP2pTradePaid(
+        tradeId: widget.tradeId,
+        paymentProofBytes: fileBytes,
+        fileName: _paymentProof.name,
+      );
 
       if (!mounted) return;
       Navigator.pushReplacement(
@@ -443,8 +561,12 @@ class _P2PAwaitingPaymentScreenState extends State<P2PAwaitingPaymentScreen> {
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              _dummyStatus,
-                              style: AppTheme.inter(color: const Color(0xFF28C76F), fontSize: 13, fontWeight: FontWeight.w600),
+                              _statusDisplay,
+                              style: AppTheme.inter(
+                                color: _hasBankDetails ? const Color(0xFF28C76F) : Colors.orangeAccent,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ],
                         ),
@@ -465,17 +587,64 @@ class _P2PAwaitingPaymentScreenState extends State<P2PAwaitingPaymentScreen> {
                     ],
                   ),
                   const SizedBox(height: 18),
-                  _buildBankRow(
-                    label: 'Bank Name',
-                    value: _dummyBankName,
-                    onTap: () => _copyValue(_dummyBankName, 'Bank name'),
-                  ),
-                  const SizedBox(height: 14),
-                  _buildBankRow(
-                    label: 'Account Number',
-                    value: _dummyAccountNumber,
-                    onTap: () => _copyValue(_dummyAccountNumber, 'Account number'),
-                  ),
+                  if (_hasBankDetails) ...[
+                    _buildBankRow(
+                      label: 'Bank Name',
+                      value: widget.bankName ?? '',
+                      onTap: () => _copyValue(widget.bankName ?? '', 'Bank name'),
+                    ),
+                    const SizedBox(height: 14),
+                    _buildBankRow(
+                      label: 'Account Number',
+                      value: widget.bankAccountNumber ?? '',
+                      onTap: () => _copyValue(widget.bankAccountNumber ?? '', 'Account number'),
+                    ),
+                    if (widget.bankAccountName != null && widget.bankAccountName!.isNotEmpty) ...[
+                      const SizedBox(height: 14),
+                      _buildBankRow(
+                        label: 'Account Name',
+                        value: widget.bankAccountName ?? '',
+                        onTap: () => _copyValue(widget.bankAccountName ?? '', 'Account name'),
+                      ),
+                    ],
+                  ] else
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1D1D1B),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: const Color(0xFFE4B53E).withOpacity(0.14)),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              width: 22,
+                              height: 22,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(color: const Color(0xFFE4B53E).withOpacity(0.8)),
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                '!',
+                                style: AppTheme.inter(color: const Color(0xFFE4B53E), fontSize: 12, fontWeight: FontWeight.w700),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                'Seller has not provided bank details yet. Please contact them or wait for them to update their account.',
+                                style: AppTheme.inter(color: Colors.white60, fontSize: 12, height: 1.55),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -515,6 +684,108 @@ class _P2PAwaitingPaymentScreenState extends State<P2PAwaitingPaymentScreen> {
               ),
             ),
             const SizedBox(height: 26),
+
+            // Payment proof upload
+            GestureDetector(
+              onTap: _isLoading ? null : _pickPaymentProof,
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1A1A1E),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: _paymentProof != null
+                        ? const Color(0xFFE4B53E).withOpacity(0.5)
+                        : Colors.white.withOpacity(0.08),
+                  ),
+                ),
+                child: _paymentProof == null
+                    ? Row(
+                        children: [
+                          Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE4B53E).withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(Icons.upload_rounded, color: Color(0xFFE4B53E), size: 22),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Upload Payment Proof',
+                                  style: AppTheme.inter(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+                                ),
+                                const SizedBox(height: 3),
+                                Text(
+                                  'Tap to attach your transfer screenshot',
+                                  style: AppTheme.inter(color: Colors.white38, fontSize: 12),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Icon(Icons.chevron_right_rounded, color: Colors.white24, size: 20),
+                        ],
+                      )
+                    : Row(
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: kIsWeb
+                                ? FutureBuilder<List<int>>(
+                                    future: _paymentProof.readAsBytes(),
+                                    builder: (context, snapshot) {
+                                      if (snapshot.hasData) {
+                                        return Image.memory(
+                                          Uint8List.fromList(snapshot.data!),
+                                          width: 48,
+                                          height: 48,
+                                          fit: BoxFit.cover,
+                                        );
+                                      }
+                                      return Container(
+                                        width: 48,
+                                        height: 48,
+                                        color: Colors.grey[800],
+                                      );
+                                    },
+                                  )
+                                : Image.file(
+                                    File(_paymentProof.path),
+                                    width: 48,
+                                    height: 48,
+                                    fit: BoxFit.cover,
+                                  ),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Proof attached',
+                                  style: AppTheme.inter(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+                                ),
+                                const SizedBox(height: 3),
+                                Text(
+                                  'Tap to change',
+                                  style: AppTheme.inter(color: const Color(0xFFE4B53E), fontSize: 12),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Icon(Icons.check_circle_rounded, color: Color(0xFFE4B53E), size: 22),
+                        ],
+                      ),
+              ),
+            ),
+
+            const SizedBox(height: 20),
             TextButton(
               onPressed: _isLoading ? null : _handleCancel,
               child: Text(

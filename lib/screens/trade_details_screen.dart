@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../models/p2p_trade.dart';
 import '../services/api_service.dart';
@@ -19,6 +20,7 @@ class _TradeDetailsScreenState extends State<TradeDetailsScreen> {
   bool _isMarkingPaid = false;
   bool _isCanceling = false;
   bool _isCompleting = false;
+  XFile? _paymentProof;
 
   // Determine if the logged-in user is the seller of this trade
   bool get _isSeller {
@@ -104,9 +106,64 @@ class _TradeDetailsScreenState extends State<TradeDetailsScreen> {
   }
 
   Future<void> _markTradePaid() async {
+    // Pick proof first
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      backgroundColor: const Color(0xFF1A1A1E),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              margin: const EdgeInsets.only(top: 10, bottom: 16),
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)),
+            ),
+            Text('Upload Payment Proof', style: AppTheme.inter(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: Container(
+                width: 40, height: 40,
+                decoration: BoxDecoration(color: const Color(0xFFE4B53E).withOpacity(0.12), shape: BoxShape.circle),
+                child: const Icon(Icons.photo_library_rounded, color: Color(0xFFE4B53E), size: 20),
+              ),
+              title: Text('Choose from Gallery', style: AppTheme.inter(color: Colors.white, fontSize: 14)),
+              onTap: () => Navigator.pop(context, ImageSource.gallery),
+            ),
+            ListTile(
+              leading: Container(
+                width: 40, height: 40,
+                decoration: BoxDecoration(color: const Color(0xFFE4B53E).withOpacity(0.12), shape: BoxShape.circle),
+                child: const Icon(Icons.camera_alt_rounded, color: Color(0xFFE4B53E), size: 20),
+              ),
+              title: Text('Take a Photo', style: AppTheme.inter(color: Colors.white, fontSize: 14)),
+              onTap: () => Navigator.pop(context, ImageSource.camera),
+            ),
+            const SizedBox(height: 12),
+          ],
+        ),
+      ),
+    );
+
+    if (source == null) return;
+
+    final picked = await ImagePicker().pickImage(source: source, imageQuality: 85);
+    if (picked == null) return;
+
+    if (mounted) setState(() => _paymentProof = picked);
+
     setState(() => _isMarkingPaid = true);
     try {
-      await ApiService.markP2pTradePaid(tradeId: widget.trade.id);
+      final fileBytes = await picked.readAsBytes();
+      await ApiService.markP2pTradePaid(
+        tradeId: widget.trade.id,
+        paymentProofBytes: fileBytes,
+        fileName: picked.name,
+      );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Trade marked as paid')),

@@ -9,6 +9,7 @@ import '../models/user_profile.dart';
 import '../models/currency.dart';
 import '../models/dashboard_data.dart';
 import '../models/wallet.dart';
+import '../models/app_notification.dart';
 import '../models/p2p_ad.dart';
 import '../models/p2p_trade.dart';
 
@@ -37,6 +38,25 @@ class ApiService {
       return localUrl;
     }
     return liveUrl;
+  }
+
+  static String? resolveUrl(String? rawPath) {
+    if (rawPath == null || rawPath.isEmpty) return null;
+    if (rawPath.startsWith('http://') || rawPath.startsWith('https://')) {
+      if (kIsWeb && kDebugMode) {
+        final uri = Uri.tryParse(rawPath);
+        if (uri != null) {
+          final liveUri = Uri.parse(liveRoot);
+          if (uri.host == liveUri.host) {
+            final query = uri.hasQuery ? '?${uri.query}' : '';
+            return '$localRoot${uri.path}$query';
+          }
+        }
+      }
+      return rawPath;
+    }
+    final clean = rawPath.startsWith('/') ? rawPath.substring(1) : rawPath;
+    return '$rootUrl/$clean';
   }
 
   static const _storage = FlutterSecureStorage();
@@ -194,6 +214,38 @@ class ApiService {
     }
   }
 
+  static Future<Map<String, dynamic>> updateProfileAvatar({
+    required List<int> avatarBytes,
+    required String fileName,
+  }) async {
+    final response = await _makeRequest(
+      () async {
+        final request = http.MultipartRequest(
+          'POST',
+          Uri.parse('$baseUrl/update-profile'),
+        )
+          ..headers['Accept'] = 'application/json'
+          ..headers['Authorization'] = 'Bearer $authToken';
+
+        request.files.add(
+          http.MultipartFile.fromBytes('avatar', avatarBytes, filename: fileName),
+        );
+
+        final streamed = await request.send();
+        return http.Response.fromStream(streamed);
+      },
+      requestName: 'UPDATE_PROFILE_AVATAR',
+    );
+
+    final data = jsonDecode(response.body);
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return data;
+    } else {
+      final errMsg = data['message'] ?? data['error'] ?? 'Server error (${response.statusCode})';
+      throw Exception(errMsg);
+    }
+  }
+
   static Future<DashboardData> getDashboardData() async {
     final response = await _makeRequest(
       () => http.get(
@@ -211,6 +263,51 @@ class ApiService {
       return DashboardData.fromJson(data);
     } else {
       throw Exception('Failed to load dashboard data (${response.statusCode})');
+    }
+  }
+
+  static Future<List<AppNotification>> getNotifications() async {
+    final response = await _makeRequest(
+      () => http.get(
+        Uri.parse('$baseUrl/notifications'),
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $authToken',
+        },
+      ),
+      requestName: 'GET_NOTIFICATIONS',
+    );
+
+    final Map<String, dynamic> data = jsonDecode(response.body);
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      final notifications = (data['notifications'] as List? ?? const []);
+      return notifications
+          .map((item) => AppNotification.fromJson(Map<String, dynamic>.from(item)))
+          .toList();
+    } else {
+      final errMsg = data['message'] ?? data['error'] ?? 'Failed to load notifications (${response.statusCode})';
+      throw Exception(errMsg);
+    }
+  }
+
+  static Future<void> markNotificationRead({
+    required String id,
+  }) async {
+    final response = await _makeRequest(
+      () => http.post(
+        Uri.parse('$baseUrl/notifications/$id/read'),
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $authToken',
+        },
+      ),
+      requestName: 'MARK_NOTIFICATION_READ',
+    );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      final Map<String, dynamic> data = jsonDecode(response.body);
+      final errMsg = data['message'] ?? data['error'] ?? 'Failed to mark notification as read (${response.statusCode})';
+      throw Exception(errMsg);
     }
   }
 
@@ -246,6 +343,7 @@ class ApiService {
     required double minLimit,
     required double maxLimit,
     required String terms,
+    required int bankAccountId,
   }) async {
     final response = await _makeRequest(
       () => http.post(
@@ -263,6 +361,7 @@ class ApiService {
           "min_limit": minLimit,
           "max_limit": maxLimit,
           "terms": terms,
+          "bank_account_id": bankAccountId,
         }),
       ),
       requestName: 'CREATE_P2P_AD',
@@ -382,15 +481,25 @@ class ApiService {
 
   static Future<Map<String, dynamic>> markP2pTradePaid({
     required int tradeId,
+    required List<int> paymentProofBytes,
+    required String fileName,
   }) async {
     final response = await _makeRequest(
-      () => http.post(
-        Uri.parse('$baseUrl/p2p/trades/$tradeId/pay'),
-        headers: {
-          'Accept': 'application/json',
-          'Authorization': 'Bearer $authToken',
-        },
-      ),
+      () async {
+        final request = http.MultipartRequest(
+          'POST',
+          Uri.parse('$baseUrl/p2p/trades/$tradeId/pay'),
+        )
+          ..headers['Accept'] = 'application/json'
+          ..headers['Authorization'] = 'Bearer $authToken';
+
+        request.files.add(
+          http.MultipartFile.fromBytes('payment_proof', paymentProofBytes, filename: fileName),
+        );
+
+        final streamed = await request.send();
+        return http.Response.fromStream(streamed);
+      },
       requestName: 'MARK_P2P_TRADE_PAID',
     );
 
@@ -606,6 +715,142 @@ class ApiService {
       return data;
     } else {
       String errMsg = data['message'] ?? data['error'] ?? 'Verification failed (${response.statusCode})';
+      throw Exception(errMsg);
+    }
+  }
+
+  // ==========================================
+  // BANK ACCOUNTS (P2P PAYMENT METHODS)
+  // ==========================================
+
+  /// Fetch the user's saved bank accounts.
+  static Future<List<Map<String, dynamic>>> getBankAccounts() async {
+    final response = await _makeRequest(
+      () => http.get(
+        Uri.parse('$baseUrl/bank-accounts'),
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $authToken',
+        },
+      ),
+      requestName: 'GET_BANK_ACCOUNTS',
+    );
+
+    final data = jsonDecode(response.body);
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      final list = data['bank_accounts'] ?? data['data'] ?? data['accounts'] ?? [];
+      return List<Map<String, dynamic>>.from(list);
+    } else {
+      final errMsg = data['message'] ?? data['error'] ?? 'Failed to load payment methods (${response.statusCode})';
+      throw Exception(errMsg);
+    }
+  }
+
+  /// Fetch the list of supported banks.
+  static Future<List<Map<String, dynamic>>> getBankList() async {
+    final response = await _makeRequest(
+      () => http.get(
+        Uri.parse('$baseUrl/bank-accounts/list'),
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $authToken',
+        },
+      ),
+      requestName: 'GET_BANK_LIST',
+    );
+
+    final data = jsonDecode(response.body);
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      final list = data['banks'] ?? data['data'] ?? [];
+      return List<Map<String, dynamic>>.from(list);
+    } else {
+      final errMsg = data['message'] ?? data['error'] ?? 'Failed to load banks (${response.statusCode})';
+      throw Exception(errMsg);
+    }
+  }
+
+  /// Verify a bank account number against a bank.
+  static Future<Map<String, dynamic>> verifyBankAccount({
+    required int bankId,
+    required String accountNumber,
+  }) async {
+    final response = await _makeRequest(
+      () => http.post(
+        Uri.parse('$baseUrl/bank-accounts/verify'),
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $authToken',
+        },
+        body: jsonEncode({
+          'bank_id': bankId,
+          'account_number': accountNumber,
+        }),
+      ),
+      requestName: 'VERIFY_BANK_ACCOUNT',
+    );
+
+    final data = jsonDecode(response.body);
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return data as Map<String, dynamic>;
+    } else {
+      final errMsg = data['message'] ?? data['error'] ?? 'Verification failed (${response.statusCode})';
+      throw Exception(errMsg);
+    }
+  }
+
+  /// Store a verified bank account.
+  static Future<Map<String, dynamic>> storeBankAccount({
+    required int bankId,
+    required String accountName,
+    required String accountNumber,
+  }) async {
+    final response = await _makeRequest(
+      () => http.post(
+        Uri.parse('$baseUrl/bank-accounts/store'),
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $authToken',
+        },
+        body: jsonEncode({
+          'bank_id': bankId,
+          'account_name': accountName,
+          'account_number': accountNumber,
+        }),
+      ),
+      requestName: 'STORE_BANK_ACCOUNT',
+    );
+
+    final data = jsonDecode(response.body);
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return data as Map<String, dynamic>;
+    } else {
+      final errMsg = data['message'] ?? data['error'] ?? 'Failed to save account (${response.statusCode})';
+      throw Exception(errMsg);
+    }
+  }
+
+  static Future<Map<String, dynamic>> forgotPassword({
+    required String email,
+  }) async {
+    final response = await _makeRequest(
+      () async {
+        var request = http.MultipartRequest('POST', Uri.parse('$baseUrl/forgot-password'))
+          ..headers['Accept'] = 'application/json'
+          ..fields['email'] = email;
+
+        final streamedResponse = await request.send();
+        return await http.Response.fromStream(streamedResponse);
+      },
+      requestName: 'FORGOT_PASSWORD',
+    );
+
+    final data = jsonDecode(response.body);
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return data as Map<String, dynamic>;
+    } else {
+      final errMsg = data['message'] ?? data['error'] ?? 'Server error (${response.statusCode})';
       throw Exception(errMsg);
     }
   }

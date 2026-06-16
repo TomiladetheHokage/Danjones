@@ -3,6 +3,7 @@ import '../services/api_service.dart';
 class P2PAd {
   final int id;
   final int userId;
+  final int? bankAccountId;
   final String type; // "buy" or "sell"
   final double price;
   final double totalAmount;
@@ -21,9 +22,15 @@ class P2PAd {
   final String currencySymbol;
   final String currencyImage;
 
+  // Bank account fields
+  final String? bankName;
+  final String? bankAccountNumber;
+  final String? bankAccountName;
+
   P2PAd({
     required this.id,
     required this.userId,
+    this.bankAccountId,
     required this.type,
     required this.price,
     required this.totalAmount,
@@ -37,15 +44,21 @@ class P2PAd {
     required this.currencyName,
     required this.currencySymbol,
     required this.currencyImage,
+    this.bankName,
+    this.bankAccountNumber,
+    this.bankAccountName,
   });
 
   factory P2PAd.fromJson(Map<String, dynamic> json) {
     final user = json['user'] as Map<String, dynamic>? ?? {};
     final currency = json['currency'] as Map<String, dynamic>? ?? {};
+    final bankAccount = json['bank_account'] as Map<String, dynamic>?;
+    final bankData = bankAccount?['bank'] as Map<String, dynamic>?;
 
     return P2PAd(
       id: json['id'] ?? 0,
       userId: json['user_id'] ?? 0,
+      bankAccountId: (json['bank_account_id'] as num?)?.toInt(),
       type: json['type'] ?? 'sell',
       price: (json['price'] as num?)?.toDouble() ?? 0.0,
       totalAmount: (json['total_amount'] as num?)?.toDouble() ?? 0.0,
@@ -59,6 +72,9 @@ class P2PAd {
       currencyName: currency['name'] ?? '',
       currencySymbol: currency['symbol'] ?? '',
       currencyImage: currency['image'] ?? '',
+      bankName: bankData?['name']?.toString() ?? bankAccount?['bank_name']?.toString(),
+      bankAccountNumber: bankAccount?['account_number']?.toString(),
+      bankAccountName: bankAccount?['account_name']?.toString(),
     );
   }
 

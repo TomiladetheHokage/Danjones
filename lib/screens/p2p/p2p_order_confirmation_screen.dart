@@ -10,15 +10,18 @@ import '../../widgets/p2p/p2p_user_header.dart';
 import '../../widgets/p2p/p2p_warning_box.dart';
 import '../legal/terms_screen.dart';
 import 'p2p_awaiting_payment_screen.dart';
+import 'p2p_seller_release_screen.dart';
 
 class P2POrderConfirmationScreen extends StatefulWidget {
   final P2PAd ad;
   final double fiatAmount;
+  final bool isSell;
 
   const P2POrderConfirmationScreen({
     super.key,
     required this.ad,
     this.fiatAmount = 0.0,
+    this.isSell = false,
   });
 
   @override
@@ -92,21 +95,41 @@ class _P2POrderConfirmationScreenState extends State<P2POrderConfirmationScreen>
       }
 
       if (!mounted) return;
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => P2PAwaitingPaymentScreen(
-            tradeId: tradeId,
-            fiatAmount: fiatAmount,
-            cryptoAmount: cryptoAmount,
-            pricePerUnit: widget.ad.price,
-            currencySymbol: widget.ad.currencySymbol,
-            currencyImage: widget.ad.currencyImage,
-            sellerName: widget.ad.userName,
-            createdAt: createdAt,
+
+      if (widget.isSell) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => P2PSellerReleaseScreen(
+              tradeId: tradeId,
+              fiatAmount: fiatAmount,
+              cryptoAmount: cryptoAmount,
+              currencySymbol: widget.ad.currencySymbol,
+              buyerName: widget.ad.userName,
+              createdAt: createdAt,
+            ),
           ),
-        ),
-      );
+        );
+      } else {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => P2PAwaitingPaymentScreen(
+              tradeId: tradeId,
+              fiatAmount: fiatAmount,
+              cryptoAmount: cryptoAmount,
+              pricePerUnit: widget.ad.price,
+              currencySymbol: widget.ad.currencySymbol,
+              currencyImage: widget.ad.currencyImage,
+              sellerName: widget.ad.userName,
+              createdAt: createdAt,
+              bankName: widget.ad.bankName,
+              bankAccountNumber: widget.ad.bankAccountNumber,
+              bankAccountName: widget.ad.bankAccountName,
+            ),
+          ),
+        );
+      }
     } catch (e) {
       if (!mounted) return;
       _showErrorDialog(e.toString().replaceAll('Exception: ', ''));

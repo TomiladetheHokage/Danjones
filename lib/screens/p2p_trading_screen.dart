@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../models/p2p_ad.dart';
+import '../models/p2p_trade.dart';
 import '../services/api_service.dart';
+import '../services/data_store.dart';
 import 'create_ad_screen.dart';
+import 'p2p/my_ads_screen.dart';
 import 'p2p/p2p_order_confirmation_screen.dart';
 import 'p2p/p2p_seller_release_screen.dart';
+import 'profile_screen.dart';
+import 'trade_details_screen.dart';
 
 class P2PTradingScreen extends StatefulWidget {
   const P2PTradingScreen({super.key});
@@ -14,162 +19,200 @@ class P2PTradingScreen extends StatefulWidget {
 }
 
 class _P2PTradingScreenState extends State<P2PTradingScreen> {
-  bool _isBuySelected = true;
-  // BTC is first/default because the API currently only has BTC ads
-  String _selectedToken = 'BTC';
+  int _p2pNavIndex = 0;
 
+  // Marketplace tab state
+  bool _isBuySelected = true;
+  String _selectedToken = 'BTC';
   late Future<List<P2PAd>> _adsFuture;
+
+  // Orders tab state
+  bool _isOrdersBuyTab = true;
+  late Future<List<P2PTrade>> _tradesFuture;
 
   @override
   void initState() {
     super.initState();
     _adsFuture = ApiService.getP2pAds();
+    _tradesFuture = ApiService.getMyP2pTrades();
   }
 
-  void _refresh() {
-    setState(() {
-      _adsFuture = ApiService.getP2pAds();
-    });
-  }
+  void _refreshAds() =>
+      setState(() => _adsFuture = ApiService.getP2pAds());
+  void _refreshTrades() =>
+      setState(() => _tradesFuture = ApiService.getMyP2pTrades());
 
-  // Filter ads by selected token and active status only.
-  // Both Buy and Sell tabs currently show the same active ad pool.
   List<P2PAd> _filterAds(List<P2PAd> all) {
-    return all.where((ad) {
-      return ad.currencySymbol.toUpperCase() == _selectedToken.toUpperCase() &&
-          ad.isActive;
-    }).toList();
+    return all
+        .where((ad) =>
+            ad.currencySymbol.toUpperCase() ==
+                _selectedToken.toUpperCase() &&
+            ad.isActive)
+        .toList();
   }
+
+  List<P2PTrade> _filterTrades(List<P2PTrade> all) {
+    final currentUserId = DataStore.instance.dashboard.value?.user?.id;
+    if (_isOrdersBuyTab) {
+      return all
+          .where((t) => t.adType.toLowerCase() != 'sell')
+          .toList();
+    }
+    // Only show sell-side trades where the logged-in user is the seller
+    return all
+        .where((t) =>
+            t.adType.toLowerCase() == 'sell' &&
+            t.status.toLowerCase() == 'pending' &&
+            currentUserId != null &&
+            t.sellerId == currentUserId)
+        .toList();
+  }
+
+  String _formatNumber(double v) {
+    final s = v == v.roundToDouble()
+        ? v.toStringAsFixed(0)
+        : v.toStringAsFixed(2);
+    return s.replaceAllMapped(
+        RegExp(r'\B(?=(\d{3})+(?!\d))'), (m) => ',');
+  }
+
+  String _formatCrypto(double v, String sym) {
+    final f = v
+        .toStringAsFixed(7)
+        .replaceAll(RegExp(r'0+$'), '')
+        .replaceAll(RegExp(r'\.$'), '');
+    return '$f $sym';
+  }
+
+  Color _statusColor(String s) {
+    switch (s.toLowerCase()) {
+      case 'completed': return const Color(0xFF33D17A);
+      case 'cancelled': return const Color(0xFFFF6B6B);
+      case 'paid': return Colors.blueAccent;
+      default: return const Color(0xFFE4B53E);
+    }
+  }
+
+  String _fmtDate(DateTime d) =>
+      '${d.day.toString().padLeft(2,'0')}/'
+      '${d.month.toString().padLeft(2,'0')}/${d.year}';
 
   void _showBuyAmountDialog(P2PAd ad) {
-    final amountController = TextEditingController();
-    String? errorText;
-
+    final ctrl = TextEditingController();
+    String? err;
     showDialog(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => Dialog(
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setD) => Dialog(
           backgroundColor: const Color(0xFF1E1E1E),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20)),
           child: Padding(
-            padding: const EdgeInsets.all(24.0),
+            padding: const EdgeInsets.all(24),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Enter Amount',
-                  style: AppTheme.inter(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
-                ),
+                Text('Enter Amount',
+                    style: AppTheme.inter(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
-                Text(
-                  'How much NGN do you want to spend?',
-                  style: AppTheme.inter(color: Colors.white54, fontSize: 14),
-                ),
+                Text('How much NGN do you want to spend?',
+                    style: AppTheme.inter(
+                        color: Colors.white54, fontSize: 14)),
                 const SizedBox(height: 20),
                 TextField(
-                  controller: amountController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  controller: ctrl,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
                   style: AppTheme.inter(color: Colors.white, fontSize: 16),
                   decoration: InputDecoration(
                     hintText: 'Enter NGN amount',
-                    hintStyle: AppTheme.inter(color: Colors.white30, fontSize: 14),
+                    hintStyle: AppTheme.inter(
+                        color: Colors.white30, fontSize: 14),
                     filled: true,
                     fillColor: const Color(0xFF151515),
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
-                    ),
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                            color: Colors.white.withOpacity(0.1))),
                     enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                            color: Colors.white.withOpacity(0.1))),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 14),
                     suffixText: 'NGN',
-                    suffixStyle: AppTheme.inter(color: Colors.white54, fontSize: 14),
-                    errorText: errorText,
+                    suffixStyle: AppTheme.inter(
+                        color: Colors.white54, fontSize: 14),
+                    errorText: err,
                   ),
-                  onChanged: (val) {
-                    setDialogState(() => errorText = null);
-                  },
+                  onChanged: (_) => setD(() => err = null),
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  'Limits: ₦${ad.minLimit.toStringAsFixed(2)} – ₦${ad.maxLimit.toStringAsFixed(2)}',
-                  style: AppTheme.inter(color: const Color(0xFFE4B53E), fontSize: 12),
-                ),
-                const SizedBox(height: 8),
-                Builder(builder: (_) {
-                  final ngn = double.tryParse(amountController.text) ?? 0;
-                  final crypto = ngn > 0 ? ngn / ad.price : 0.0;
-                  return Text(
-                    ngn > 0
-                        ? 'You receive ≈ ${crypto.toStringAsFixed(8)} ${ad.currencySymbol}'
-                        : 'Enter amount to see ${ad.currencySymbol} equivalent',
+                    'Limits: ₦${ad.minLimit.toStringAsFixed(2)} – '
+                    '₦${ad.maxLimit.toStringAsFixed(2)}',
                     style: AppTheme.inter(
-                      color: ngn > 0 ? Colors.white70 : Colors.white30,
-                      fontSize: 12,
-                    ),
-                  );
-                }),
+                        color: const Color(0xFFE4B53E), fontSize: 12)),
                 const SizedBox(height: 24),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => Navigator.pop(context),
-                        style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: Color(0xFFE4B53E)),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                        child: Text(
-                          'Cancel',
-                          style: AppTheme.inter(color: const Color(0xFFE4B53E), fontWeight: FontWeight.w600),
-                        ),
-                      ),
+                Row(children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      style: OutlinedButton.styleFrom(
+                          side: const BorderSide(
+                              color: Color(0xFFE4B53E)),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12))),
+                      child: Text('Cancel',
+                          style: AppTheme.inter(
+                              color: const Color(0xFFE4B53E),
+                              fontWeight: FontWeight.w600)),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () {
-                          final amount = double.tryParse(amountController.text);
-                          if (amount == null) {
-                            setDialogState(() => errorText = 'Enter a valid amount');
-                            return;
-                          }
-                          if (amount < ad.minLimit) {
-                            setDialogState(() => errorText = 'Amount below minimum (₦${ad.minLimit})');
-                            return;
-                          }
-                          if (amount > ad.maxLimit) {
-                            setDialogState(() => errorText = 'Amount exceeds maximum (₦${ad.maxLimit})');
-                            return;
-                          }
-
-                          Navigator.pop(context);
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => P2POrderConfirmationScreen(
-                                ad: ad,
-                                fiatAmount: amount,
-                              ),
-                            ),
-                          );
-                        },
-                        style: ElevatedButton.styleFrom(
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFFE4B53E),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                        child: Text(
-                          'Continue',
-                          style: AppTheme.inter(color: Colors.black, fontWeight: FontWeight.w600),
-                        ),
-                      ),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12))),
+                      onPressed: () {
+                        final amt = double.tryParse(ctrl.text);
+                        if (amt == null) {
+                          setD(() => err = 'Enter a valid amount');
+                          return;
+                        }
+                        if (amt < ad.minLimit) {
+                          setD(() => err =
+                              'Min ₦${ad.minLimit.toStringAsFixed(0)}');
+                          return;
+                        }
+                        if (amt > ad.maxLimit) {
+                          setD(() => err =
+                              'Max ₦${ad.maxLimit.toStringAsFixed(0)}');
+                          return;
+                        }
+                        Navigator.pop(ctx);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                P2POrderConfirmationScreen(
+                                    ad: ad, fiatAmount: amt),
+                          ),
+                        );
+                      },
+                      child: Text('Continue',
+                          style: AppTheme.inter(
+                              color: Colors.black,
+                              fontWeight: FontWeight.w600)),
                     ),
-                  ],
-                ),
+                  ),
+                ]),
               ],
             ),
           ),
@@ -180,112 +223,327 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final bool coreP2PTabs = _p2pNavIndex == 0 || _p2pNavIndex == 1;
+
     return Scaffold(
       backgroundColor: const Color(0xFF0A0A0A),
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white, size: 24),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(
-          'P2P Trading',
-          style: AppTheme.inter(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.white),
-        ),
-        centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_none_rounded, color: Colors.white, size: 24),
-            onPressed: () {},
-          ),
-          const SizedBox(width: 8),
-        ],
-      ),
-      body: Stack(
-        children: [
-          Column(
-            children: [
-              _buildSegmentedControl(),
-              _buildFiltersRow(),
-              Expanded(
-                child: FutureBuilder<List<P2PAd>>(
-                  future: _adsFuture,
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(
-                        child: CircularProgressIndicator(
-                          color: Color(0xFFE4B53E),
-                          strokeWidth: 2,
-                        ),
-                      );
-                    }
-
-                    if (snapshot.hasError) {
-                      return _buildErrorState(snapshot.error.toString());
-                    }
-
-                    final filtered = _filterAds(snapshot.data ?? []);
-
-                    if (filtered.isEmpty) {
-                      return _buildEmptyState();
-                    }
-
-                    return ListView.separated(
-                      physics: const BouncingScrollPhysics(),
-                      padding: const EdgeInsets.only(left: 16, right: 16, top: 8, bottom: 100),
-                      itemCount: filtered.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 16),
-                      itemBuilder: (context, index) => _buildAdCard(filtered[index]),
-                    );
-                  },
+      appBar: coreP2PTabs
+          ? AppBar(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.white, size: 24),
+                onPressed: () => Navigator.pop(context),
+              ),
+              title: Text(
+                _p2pNavIndex == 0 ? 'P2P Trading' : 'My Orders',
+                style: AppTheme.inter(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
                 ),
               ),
-            ],
-          ),
+              centerTitle: true,
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.notifications_none_rounded, color: Colors.white, size: 24),
+                  onPressed: () {},
+                ),
+                const SizedBox(width: 8),
+              ],
+            )
+          : null,
+      body: _buildP2PBody(),
+      bottomNavigationBar: _buildP2PBottomNav(),
+    );
+  }
 
-          // Post Ad Floating Button
-          Positioned(
-            bottom: 32,
-            left: 0,
-            right: 0,
-            child: Center(
-              child: GestureDetector(
-                onTap: () {
-                  Navigator.of(context, rootNavigator: true).push(
-                    MaterialPageRoute(builder: (context) => const CreateAdScreen()),
-                  );
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 14),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF151515),
-                    borderRadius: BorderRadius.circular(30),
-                    border: Border.all(color: const Color(0xFFE4B53E), width: 1),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.5),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Text(
-                    '+ Post Ad',
-                    style: AppTheme.inter(color: const Color(0xFFE4B53E), fontSize: 14, fontWeight: FontWeight.w600),
+  Widget _buildP2PBody() {
+    switch (_p2pNavIndex) {
+      case 0:
+        return _buildMarketplace();
+      case 1:
+        return _buildOrders();
+      case 2:
+        return const MyAdsScreen(embedded: true);
+      case 3:
+        return const ProfileScreen(embedded: true);
+      default:
+        return _buildMarketplace();
+    }
+  }
+
+  Widget _buildP2PBottomNav() {
+    Widget item({
+      required int index,
+      required String iconAsset,
+      required String label,
+    }) {
+      final active = _p2pNavIndex == index;
+      final color = active ? const Color(0xFFE4B53E) : const Color(0xFF7B7E86);
+
+      return Expanded(
+        child: InkWell(
+          onTap: () => setState(() => _p2pNavIndex = index),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ColorFiltered(
+                  colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
+                  child: Image.asset(
+                    iconAsset,
+                    width: 30,
+                    height: 30,
                   ),
                 ),
-              ),
+                const SizedBox(height: 6),
+                Text(
+                  label,
+                  style: AppTheme.inter(
+                    color: color,
+                    fontSize: 11,
+                    fontWeight: active ? FontWeight.w600 : FontWeight.w500,
+                  ),
+                ),
+              ],
             ),
           ),
-        ],
+        ),
+      );
+    }
+
+    return Container(
+      height: 98,
+      decoration: BoxDecoration(
+        border: Border(top: BorderSide(color: Colors.white.withOpacity(0.14))),
+        gradient: const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFF1B1F21), Color(0xFF121416)],
+        ),
+      ),
+      child: SafeArea(
+        top: false,
+        bottom: false,
+        child: Row(
+          children: [
+            item(index: 0, iconAsset: 'assets/icons/profile-2user.png', label: 'P2P'),
+            item(index: 1, iconAsset: 'assets/icons/message-text.png', label: 'Orders'),
+            item(index: 2, iconAsset: 'assets/icons/Ads.png', label: 'My Ads'),
+            item(index: 3, iconAsset: 'assets/icons/Users.png', label: 'Profile'),
+          ],
+        ),
       ),
     );
   }
 
-  // ─── Segmented control ───────────────────────────────────────────────────
+  void _showSellAmountDialog(P2PAd ad) {
+    final ctrl = TextEditingController();
+    String? err;
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setD) => Dialog(
+          backgroundColor: const Color(0xFF1E1E1E),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20)),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Enter Amount',
+                    style: AppTheme.inter(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                Text(
+                    'How much ${ad.currencySymbol} do you want to sell?',
+                    style: AppTheme.inter(
+                        color: Colors.white54, fontSize: 14)),
+                const SizedBox(height: 20),
+                TextField(
+                  controller: ctrl,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  style: AppTheme.inter(color: Colors.white, fontSize: 16),
+                  decoration: InputDecoration(
+                    hintText: 'Enter NGN amount',
+                    hintStyle: AppTheme.inter(
+                        color: Colors.white30, fontSize: 14),
+                    filled: true,
+                    fillColor: const Color(0xFF151515),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                            color: Colors.white.withOpacity(0.1))),
+                    enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                            color: Colors.white.withOpacity(0.1))),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 14),
+                    suffixText: 'NGN',
+                    suffixStyle: AppTheme.inter(
+                        color: Colors.white54, fontSize: 14),
+                    errorText: err,
+                  ),
+                  onChanged: (_) => setD(() => err = null),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                    'Limits: ₦${ad.minLimit.toStringAsFixed(2)} – '
+                    '₦${ad.maxLimit.toStringAsFixed(2)}',
+                    style: AppTheme.inter(
+                        color: const Color(0xFFE4B53E), fontSize: 12)),
+                const SizedBox(height: 24),
+                Row(children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      style: OutlinedButton.styleFrom(
+                          side: const BorderSide(
+                              color: Color(0xFFE4B53E)),
+                          shape: RoundedRectangleBorder(
+                              borderRadius:
+                                  BorderRadius.circular(12))),
+                      child: Text('Cancel',
+                          style: AppTheme.inter(
+                              color: const Color(0xFFE4B53E),
+                              fontWeight: FontWeight.w600)),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.redAccent,
+                          shape: RoundedRectangleBorder(
+                              borderRadius:
+                                  BorderRadius.circular(12))),
+                      onPressed: () {
+                        final amt = double.tryParse(ctrl.text);
+                        if (amt == null) {
+                          setD(() => err = 'Enter a valid amount');
+                          return;
+                        }
+                        if (amt < ad.minLimit) {
+                          setD(() => err =
+                              'Min ₦${ad.minLimit.toStringAsFixed(0)}');
+                          return;
+                        }
+                        if (amt > ad.maxLimit) {
+                          setD(() => err =
+                              'Max ₦${ad.maxLimit.toStringAsFixed(0)}');
+                          return;
+                        }
+                        Navigator.pop(ctx);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                P2POrderConfirmationScreen(
+                                    ad: ad,
+                                    fiatAmount: amt,
+                                    isSell: true),
+                          ),
+                        );
+                      },
+                      child: Text('Continue',
+                          style: AppTheme.inter(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600)),
+                    ),
+                  ),
+                ]),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
-  Widget _buildSegmentedControl() {
+  // ════════════════════════════════════════════════
+  //  MARKETPLACE TAB
+  // ════════════════════════════════════════════════
+
+  Widget _buildMarketplace() {
+    return Stack(
+      children: [
+        Column(
+          children: [
+            _buildBuySellSegment(),
+            _buildFiltersRow(),
+            Expanded(
+              child: FutureBuilder<List<P2PAd>>(
+                future: _adsFuture,
+                builder: (ctx, snap) {
+                  if (snap.connectionState == ConnectionState.waiting) {
+                    return const Center(
+                      child: CircularProgressIndicator(
+                          color: Color(0xFFE4B53E), strokeWidth: 2),
+                    );
+                  }
+                  if (snap.hasError) {
+                    return _buildAdsError(snap.error.toString());
+                  }
+                  final ads = _filterAds(snap.data ?? []);
+                  if (ads.isEmpty) return _buildAdsEmpty();
+                  return ListView.separated(
+                    physics: const BouncingScrollPhysics(),
+                    padding: const EdgeInsets.only(
+                        left: 16, right: 16, top: 8, bottom: 100),
+                    itemCount: ads.length,
+                    separatorBuilder: (_, __) =>
+                        const SizedBox(height: 16),
+                    itemBuilder: (_, i) => _buildAdCard(ads[i]),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+        Positioned(
+          bottom: 32, left: 0, right: 0,
+          child: Center(
+            child: GestureDetector(
+              onTap: () => Navigator.of(context, rootNavigator: true)
+                  .push(MaterialPageRoute(
+                      builder: (_) => const CreateAdScreen())),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 48, vertical: 14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF151515),
+                  borderRadius: BorderRadius.circular(30),
+                  border: Border.all(
+                      color: const Color(0xFFE4B53E), width: 1),
+                  boxShadow: [
+                    BoxShadow(
+                        color: Colors.black.withOpacity(0.5),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4))
+                  ],
+                ),
+                child: Text('+ Post Ad',
+                    style: AppTheme.inter(
+                        color: const Color(0xFFE4B53E),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600)),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBuySellSegment() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Container(
@@ -295,17 +553,17 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> {
           borderRadius: BorderRadius.circular(25),
           color: const Color(0xFF151515),
         ),
-        child: Row(
-          children: [
-            _buildSegmentTab('Buy', _isBuySelected, () => setState(() => _isBuySelected = true)),
-            _buildSegmentTab('Sell', !_isBuySelected, () => setState(() => _isBuySelected = false)),
-          ],
-        ),
+        child: Row(children: [
+          _buildSegTab('Buy', _isBuySelected,
+              () => setState(() => _isBuySelected = true)),
+          _buildSegTab('Sell', !_isBuySelected,
+              () => setState(() => _isBuySelected = false)),
+        ]),
       ),
     );
   }
 
-  Widget _buildSegmentTab(String label, bool isActive, VoidCallback onTap) {
+  Widget _buildSegTab(String label, bool active, VoidCallback onTap) {
     return Expanded(
       child: GestureDetector(
         onTap: onTap,
@@ -314,82 +572,73 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> {
           alignment: Alignment.center,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(25),
-            gradient: isActive ? const LinearGradient(colors: [Color(0xFFF3C756), Color(0xFFB88A2D)]) : null,
+            gradient: active
+                ? const LinearGradient(
+                    colors: [Color(0xFFF3C756), Color(0xFFB88A2D)])
+                : null,
           ),
-          child: Text(
-            label,
-            style: AppTheme.inter(
-              color: isActive ? Colors.black : Colors.white54,
-              fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
-              fontSize: 14,
-            ),
-          ),
+          child: Text(label,
+              style: AppTheme.inter(
+                  color: active ? Colors.black : Colors.white54,
+                  fontWeight:
+                      active ? FontWeight.w600 : FontWeight.w500,
+                  fontSize: 14)),
         ),
       ),
     );
   }
 
-  // ─── Token chip row ──────────────────────────────────────────────────────
-
   Widget _buildFiltersRow() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(
-        children: [
-          // BTC is first to match current API data
-          _buildTokenChip('BTC'),
-          const SizedBox(width: 8),
-          _buildTokenChip('USDT'),
-          const SizedBox(width: 8),
-          _buildTokenChip('ETH'),
-          const Spacer(),
-          Text('Sort', style: AppTheme.inter(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500)),
-          const SizedBox(width: 4),
-          const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFFE4B53E), size: 18),
-        ],
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(children: [
+        _buildTokenChip('BTC'),
+        const SizedBox(width: 8),
+        _buildTokenChip('USDT'),
+        const SizedBox(width: 8),
+        _buildTokenChip('ETH'),
+        const Spacer(),
+        Text('Sort',
+            style: AppTheme.inter(
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.w500)),
+        const SizedBox(width: 4),
+        const Icon(Icons.keyboard_arrow_down_rounded,
+            color: Color(0xFFE4B53E), size: 18),
+      ]),
     );
   }
 
   Widget _buildTokenChip(String token) {
-    final bool isSelected = _selectedToken == token;
+    final sel = _selectedToken == token;
     return GestureDetector(
       onTap: () => setState(() => _selectedToken = token),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFFE4B53E) : const Color(0xFF1A1A1A),
+          color: sel
+              ? const Color(0xFFE4B53E)
+              : const Color(0xFF1A1A1A),
           borderRadius: BorderRadius.circular(16),
         ),
-        child: Text(
-          token,
-          style: AppTheme.inter(
-            color: isSelected ? Colors.black : Colors.white60,
-            fontSize: 12,
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-          ),
-        ),
+        child: Text(token,
+            style: AppTheme.inter(
+                color: sel ? Colors.black : Colors.white60,
+                fontSize: 12,
+                fontWeight:
+                    sel ? FontWeight.w600 : FontWeight.w500)),
       ),
     );
   }
 
-  // ─── Ad card ─────────────────────────────────────────────────────────────
-
   Widget _buildAdCard(P2PAd ad) {
-    // Dummy data for fields not yet in the API response
-    const tradeStats = '450 trades | 98.5%';
-    // final methods = ['Palmpay', 'Bank Transfer'];
-    final methods = <String>[]; // no payment methods
-
     final initials = ad.userName.length >= 2
         ? ad.userName.substring(0, 2).toUpperCase()
         : ad.userName.toUpperCase();
-
-    final formattedPrice = _formatNumber(ad.price);
-    final formattedAvailable = _formatCrypto(ad.availableAmount, ad.currencySymbol);
-    final formattedMin = _formatNumber(ad.minLimit);
-    final formattedMax = _formatNumber(ad.maxLimit);
+    final isBuy = _isBuySelected;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
@@ -400,129 +649,123 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Header row ──────────────────────────────────────────────────
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Avatar / initials
               Container(
-                width: 36,
-                height: 36,
+                width: 36, height: 36,
                 decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Color(0xFF1E1E1E),
-                ),
+                    shape: BoxShape.circle,
+                    color: Color(0xFF1E1E1E)),
                 alignment: Alignment.center,
-                child: Text(
-                  initials,
-                  style: AppTheme.inter(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.bold),
-                ),
+                child: Text(initials,
+                    style: AppTheme.inter(
+                        color: Colors.white70,
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold)),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Text(
-                          ad.userName,
-                          style: AppTheme.inter(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
-                        ),
-                        const SizedBox(width: 4),
-                        const Icon(Icons.verified, color: Colors.green, size: 14),
-                      ],
-                    ),
+                    Row(children: [
+                      Text(ad.userName,
+                          style: AppTheme.inter(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600)),
+                      const SizedBox(width: 4),
+                      const Icon(Icons.verified,
+                          color: Colors.green, size: 14),
+                    ]),
                     const SizedBox(height: 4),
-                    Text(
-                      tradeStats,
-                      style: AppTheme.inter(color: Colors.white54, fontSize: 11),
-                    ),
+                    Text('450 trades | 98.5%',
+                        style: AppTheme.inter(
+                            color: Colors.white54, fontSize: 11)),
                   ],
                 ),
               ),
-              // Price column
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text('Price', style: AppTheme.inter(color: const Color(0xFFE4B53E), fontSize: 11)),
+                  Text('Price',
+                      style: AppTheme.inter(
+                          color: const Color(0xFFE4B53E),
+                          fontSize: 11)),
                   const SizedBox(height: 2),
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Text(
-                        formattedPrice,
-                        style: AppTheme.inter(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
-                      ),
+                      Text(_formatNumber(ad.price),
+                          style: AppTheme.inter(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold)),
                       const SizedBox(width: 4),
-                      Text('NGN', style: AppTheme.inter(color: Colors.white54, fontSize: 10, fontWeight: FontWeight.w600)),
+                      Text('NGN',
+                          style: AppTheme.inter(
+                              color: Colors.white54,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600)),
                     ],
                   ),
                 ],
               ),
             ],
           ),
-
-          const SizedBox(height: 16),
-
-          // ── Details row ──────────────────────────────────────────────────
+          const SizedBox(height: 12),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Available', style: AppTheme.inter(color: const Color(0xFFE4B53E), fontSize: 11)),
-                  const SizedBox(height: 4),
-                  Text(
-                    formattedAvailable,
-                    style: AppTheme.inter(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
-                  ),
-                ],
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text('Limits', style: AppTheme.inter(color: const Color(0xFFE4B53E), fontSize: 11)),
-                  const SizedBox(height: 4),
-                  Text(
-                    '₦$formattedMin – ₦$formattedMax',
-                    style: AppTheme.inter(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
-                  ),
-                ],
-              ),
+              Text(
+                'Quantity ${_formatCrypto(ad.availableAmount, ad.currencySymbol)}',
+                style: AppTheme.inter(
+                    color: Colors.white54, fontSize: 11)),
+              Text(
+                'Limits ₦${_formatNumber(ad.minLimit)} - ₦${_formatNumber(ad.maxLimit)}',
+                style: AppTheme.inter(
+                    color: Colors.white54, fontSize: 11)),
             ],
           ),
-
-          const SizedBox(height: 20),
-
-          // ── Action row ───────────────────────────────────────────────────
+          const SizedBox(height: 14),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: methods.map((m) => _buildMethodIndicator(m)).toList(),
-              ),
+              // payment method dots (empty for now)
+              const SizedBox(),
               GestureDetector(
-                onTap: () {
-                  if (_isBuySelected) {
-                    _showBuyAmountDialog(ad);
-                  } else {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const P2PSellerReleaseScreen()),
-                    );
-                  }
-                },
+                onTap: () => isBuy
+                    ? _showBuyAmountDialog(ad)
+                    : Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => P2PSellerReleaseScreen(
+                            tradeId: 0,
+                            fiatAmount: ad.maxLimit,
+                            cryptoAmount: ad.availableAmount,
+                            currencySymbol: ad.currencySymbol,
+                            buyerName: ad.userName,
+                          ),
+                        ),
+                      ),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 24, vertical: 8),
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(colors: [Color(0xFFF3C756), Color(0xFFB88A2D)]),
+                    color: isBuy
+                        ? const Color(0xFFE4B53E)
+                        : Colors.redAccent,
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
-                    _isBuySelected ? 'Buy ${ad.currencySymbol}' : 'Sell ${ad.currencySymbol}',
-                    style: AppTheme.inter(color: Colors.black, fontSize: 13, fontWeight: FontWeight.w600),
+                    isBuy
+                        ? 'Buy ${ad.currencySymbol}'
+                        : 'Sell ${ad.currencySymbol}',
+                    style: AppTheme.inter(
+                        color: Colors.black,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600),
                   ),
                 ),
               ),
@@ -533,85 +776,313 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> {
     );
   }
 
-  Widget _buildMethodIndicator(String label) {
-    Color dotColor = label == 'Palmpay'
-        ? Colors.purpleAccent
-        : label == 'Bank Transfer'
-            ? Colors.blueAccent
-            : Colors.greenAccent;
-    return Padding(
-      padding: const EdgeInsets.only(right: 12),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 6,
-            height: 6,
-            decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
-          ),
-          const SizedBox(width: 4),
-          Text(label, style: AppTheme.inter(color: Colors.white70, fontSize: 11)),
-        ],
-      ),
-    );
-  }
+  Widget _buildAdsEmpty() => Center(
+    child: Column(mainAxisSize: MainAxisSize.min, children: [
+      const Icon(Icons.inbox_outlined,
+          color: Colors.white24, size: 56),
+      const SizedBox(height: 12),
+      Text('No ads available',
+          style: AppTheme.inter(
+              color: Colors.white38,
+              fontSize: 15,
+              fontWeight: FontWeight.w500)),
+      const SizedBox(height: 4),
+      Text('Try a different token or check back later.',
+          style: AppTheme.inter(
+              color: Colors.white24, fontSize: 12)),
+    ]),
+  );
 
-  // ─── Empty / Error states ────────────────────────────────────────────────
-
-  Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.inbox_outlined, color: Colors.white24, size: 56),
-          const SizedBox(height: 12),
-          Text(
-            'No ads available',
-            style: AppTheme.inter(color: Colors.white38, fontSize: 15, fontWeight: FontWeight.w500),
+  Widget _buildAdsError(String error) => Center(
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 32),
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        const Icon(Icons.wifi_off_rounded,
+            color: Colors.white24, size: 56),
+        const SizedBox(height: 12),
+        Text('Failed to load ads',
+            style: AppTheme.inter(
+                color: Colors.white54,
+                fontSize: 15,
+                fontWeight: FontWeight.w600)),
+        const SizedBox(height: 6),
+        Text(error.replaceAll('Exception: ', ''),
+            textAlign: TextAlign.center,
+            style: AppTheme.inter(
+                color: Colors.white30, fontSize: 12)),
+        const SizedBox(height: 20),
+        GestureDetector(
+          onTap: _refreshAds,
+          child: Container(
+            padding: const EdgeInsets.symmetric(
+                horizontal: 28, vertical: 10),
+            decoration: BoxDecoration(
+                border: Border.all(color: const Color(0xFFE4B53E)),
+                borderRadius: BorderRadius.circular(20)),
+            child: Text('Retry',
+                style: AppTheme.inter(
+                    color: const Color(0xFFE4B53E),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600)),
           ),
-          const SizedBox(height: 4),
-          Text(
-            'Try a different token or check back later.',
-            style: AppTheme.inter(color: Colors.white24, fontSize: 12),
-          ),
-        ],
-      ),
-    );
-  }
+        ),
+      ]),
+    ),
+  );
 
-  Widget _buildErrorState(String error) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.wifi_off_rounded, color: Colors.white24, size: 56),
-            const SizedBox(height: 12),
-            Text(
-              'Failed to load ads',
-              style: AppTheme.inter(color: Colors.white54, fontSize: 15, fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              error.replaceAll('Exception: ', ''),
-              textAlign: TextAlign.center,
-              style: AppTheme.inter(color: Colors.white30, fontSize: 12),
-            ),
-            const SizedBox(height: 20),
-            GestureDetector(
-              onTap: _refresh,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 10),
-                decoration: BoxDecoration(
-                  border: Border.all(color: const Color(0xFFE4B53E)),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  'Retry',
-                  style: AppTheme.inter(color: const Color(0xFFE4B53E), fontSize: 13, fontWeight: FontWeight.w600),
-                ),
+  // ════════════════════════════════════════════════
+  //  MY ORDERS TAB
+  // ════════════════════════════════════════════════
+
+  Widget _buildOrders() {
+    return Column(children: [
+      _buildOrdersSegment(),
+      Expanded(
+        child: FutureBuilder<List<P2PTrade>>(
+          future: _tradesFuture,
+          builder: (ctx, snap) {
+            if (snap.connectionState == ConnectionState.waiting) {
+              return const Center(
+                child: CircularProgressIndicator(
+                    color: Color(0xFFE4B53E), strokeWidth: 2),
+              );
+            }
+            if (snap.hasError) {
+              return _buildTradesError(snap.error.toString());
+            }
+            final trades = _filterTrades(snap.data ?? []);
+            if (trades.isEmpty) return _buildTradesEmpty();
+            return RefreshIndicator(
+              color: const Color(0xFFE4B53E),
+              backgroundColor: const Color(0xFF1A1A1E),
+              onRefresh: () async => _refreshTrades(),
+              child: ListView.separated(
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.only(
+                    left: 16, right: 16, top: 8, bottom: 32),
+                itemCount: trades.length,
+                separatorBuilder: (_, __) =>
+                    const SizedBox(height: 14),
+                itemBuilder: (_, i) =>
+                    _buildTradeCard(trades[i]),
               ),
+            );
+          },
+        ),
+      ),
+    ]);
+  }
+
+  Widget _buildOrdersSegment() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+          horizontal: 16, vertical: 12),
+      child: Container(
+        height: 46,
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(25),
+          color: const Color(0xFF151515),
+        ),
+        child: Row(children: [
+          _buildSegTab('Buy Orders', _isOrdersBuyTab,
+              () => setState(() => _isOrdersBuyTab = true)),
+          _buildSegTab('Sell Orders', !_isOrdersBuyTab,
+              () => setState(() => _isOrdersBuyTab = false)),
+        ]),
+      ),
+    );
+  }
+
+  Widget _buildTradeCard(P2PTrade trade) {
+    final counterparty =
+        _isOrdersBuyTab ? trade.sellerName : trade.buyerName;
+    final initials = counterparty.length >= 2
+        ? counterparty.substring(0, 2).toUpperCase()
+        : counterparty.toUpperCase();
+    final sc = _statusColor(trade.status);
+
+    return GestureDetector(
+      onTap: () async {
+        final r = await Navigator.push<bool>(
+          context,
+          MaterialPageRoute(
+            builder: (_) => _isOrdersBuyTab
+                ? TradeDetailsScreen(trade: trade)
+                : P2PSellerReleaseScreen(
+                    tradeId: trade.id,
+                    fiatAmount: trade.fiatAmount,
+                    cryptoAmount: trade.cryptoAmount,
+                    currencySymbol: trade.currencySymbol,
+                    buyerName: trade.buyerName,
+                    createdAt: trade.createdAt,
+                  ),
+          ),
+        );
+        if (r == true) _refreshTrades();
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+            horizontal: 16, vertical: 16),
+        decoration: BoxDecoration(
+          color: const Color(0xFF151515),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 36, height: 36,
+                  decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Color(0xFF1E1E1E)),
+                  alignment: Alignment.center,
+                  child: Text(initials,
+                      style: AppTheme.inter(
+                          color: Colors.white70,
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold)),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(children: [
+                        Text(counterparty,
+                            style: AppTheme.inter(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600)),
+                        const SizedBox(width: 4),
+                        const Icon(Icons.verified,
+                            color: Colors.green, size: 14),
+                      ]),
+                      const SizedBox(height: 4),
+                      Text(
+                          _isOrdersBuyTab ? 'Seller' : 'Buyer',
+                          style: AppTheme.inter(
+                              color: Colors.white54,
+                              fontSize: 11)),
+                    ],
+                  ),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text('Price',
+                        style: AppTheme.inter(
+                            color: const Color(0xFFE4B53E),
+                            fontSize: 11)),
+                    const SizedBox(height: 2),
+                    Row(
+                      crossAxisAlignment:
+                          CrossAxisAlignment.end,
+                      children: [
+                        Text(_formatNumber(trade.adPrice),
+                            style: AppTheme.inter(
+                                color: Colors.white,
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold)),
+                        const SizedBox(width: 4),
+                        Text('NGN',
+                            style: AppTheme.inter(
+                                color: Colors.white54,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600)),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: sc.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(trade.status.toUpperCase(),
+                          style: AppTheme.inter(
+                              color: sc,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w700)),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                    'Fiat  ₦${_formatNumber(trade.fiatAmount)}',
+                    style: AppTheme.inter(
+                        color: Colors.white70, fontSize: 12)),
+                Text(
+                    _formatCrypto(
+                        trade.cryptoAmount,
+                        trade.currencySymbol),
+                    style: AppTheme.inter(
+                        color: Colors.white70, fontSize: 12)),
+              ],
+            ),
+            if (trade.bankName != null ||
+                trade.bankAccountNumber != null) ...[
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.04),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(children: [
+                  const Icon(Icons.account_balance_rounded,
+                      color: Color(0xFFE4B53E), size: 15),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment:
+                          CrossAxisAlignment.start,
+                      children: [
+                        if (trade.bankName != null)
+                          Text(trade.bankName!,
+                              style: AppTheme.inter(
+                                  color: Colors.white70,
+                                  fontSize: 12,
+                                  fontWeight:
+                                      FontWeight.w600)),
+                        if (trade.bankAccountNumber != null)
+                          Text(trade.bankAccountNumber!,
+                              style: AppTheme.inter(
+                                  color: Colors.white,
+                                  fontSize: 13,
+                                  fontWeight:
+                                      FontWeight.w700)),
+                      ],
+                    ),
+                  ),
+                ]),
+              ),
+            ],
+            const SizedBox(height: 10),
+            Row(
+              mainAxisAlignment:
+                  MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Order #${trade.id}',
+                    style: AppTheme.inter(
+                        color: Colors.white38,
+                        fontSize: 11)),
+                if (trade.createdAt != null)
+                  Text(_fmtDate(trade.createdAt!),
+                      style: AppTheme.inter(
+                          color: Colors.white38,
+                          fontSize: 11)),
+              ],
             ),
           ],
         ),
@@ -619,24 +1090,58 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> {
     );
   }
 
-  // ─── Helpers ─────────────────────────────────────────────────────────────
+  Widget _buildTradesEmpty() => Center(
+    child: Column(mainAxisSize: MainAxisSize.min, children: [
+      const Icon(Icons.receipt_long_outlined,
+          color: Colors.white24, size: 56),
+      const SizedBox(height: 12),
+      Text('No orders yet',
+          style: AppTheme.inter(
+              color: Colors.white38,
+              fontSize: 15,
+              fontWeight: FontWeight.w500)),
+      const SizedBox(height: 4),
+      Text('Your trades will appear here.',
+          style: AppTheme.inter(
+              color: Colors.white24, fontSize: 12)),
+    ]),
+  );
 
-  String _formatNumber(double value) {
-    if (value == value.roundToDouble()) {
-      return value.toStringAsFixed(0).replaceAllMapped(
-            RegExp(r'\B(?=(\d{3})+(?!\d))'),
-            (m) => ',',
-          );
-    }
-    return value.toStringAsFixed(2).replaceAllMapped(
-          RegExp(r'\B(?=(\d{3})+(?!\d))'),
-          (m) => ',',
-        );
-  }
-
-  String _formatCrypto(double value, String symbol) {
-    // Show up to 7 significant decimal places, strip trailing zeros
-    final formatted = value.toStringAsFixed(7).replaceAll(RegExp(r'0+$'), '').replaceAll(RegExp(r'\.$'), '');
-    return '$formatted $symbol';
-  }
+  Widget _buildTradesError(String error) => Center(
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 32),
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        const Icon(Icons.wifi_off_rounded,
+            color: Colors.white24, size: 56),
+        const SizedBox(height: 12),
+        Text('Failed to load orders',
+            style: AppTheme.inter(
+                color: Colors.white54,
+                fontSize: 15,
+                fontWeight: FontWeight.w600)),
+        const SizedBox(height: 6),
+        Text(error.replaceAll('Exception: ', ''),
+            textAlign: TextAlign.center,
+            style: AppTheme.inter(
+                color: Colors.white30, fontSize: 12)),
+        const SizedBox(height: 20),
+        GestureDetector(
+          onTap: _refreshTrades,
+          child: Container(
+            padding: const EdgeInsets.symmetric(
+                horizontal: 28, vertical: 10),
+            decoration: BoxDecoration(
+                border: Border.all(
+                    color: const Color(0xFFE4B53E)),
+                borderRadius: BorderRadius.circular(20)),
+            child: Text('Retry',
+                style: AppTheme.inter(
+                    color: const Color(0xFFE4B53E),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600)),
+          ),
+        ),
+      ]),
+    ),
+  );
 }

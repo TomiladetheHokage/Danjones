@@ -10,13 +10,16 @@ import 'trade_screen.dart';
 import 'p2p/my_ads_screen.dart';
 import 'kyc/verification_center_screen.dart';
 import 'legal/about_legal_screen.dart';
+import 'notifications_screen.dart';
 import '../services/api_service.dart';
 import '../services/data_store.dart';
 import '../services/crypto_service.dart';
 import '../models/user_profile.dart';
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key});
+  final bool embedded;
+
+  const ProfileScreen({super.key, this.embedded = false});
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -58,7 +61,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         automaticallyImplyLeading: false,
-        leading: Navigator.canPop(context)
+        leading: widget.embedded
+            ? null
+            : Navigator.canPop(context)
             ? IconButton(
                 icon: const Icon(Icons.arrow_back, color: Colors.white),
                 onPressed: () => Navigator.pop(context),
@@ -76,7 +81,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
         actions: [
           IconButton(
             icon: Image.asset("assets/icons/Notification-icon.png", width: 24, height: 24, color: Colors.white),
-            onPressed: () => _showComingSoon(context),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+              );
+            },
           ),
         ],
       ),
@@ -90,13 +100,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
               FutureBuilder<UserProfile>(
                 future: userFuture,
                 builder: (context, snapshot) {
-                  ImageProvider avatarImage = const AssetImage("assets/images/profile_picture.png");
+                  String? avatarUrl;
                   String email = 'user***@email.com';
                   String uid = '8839201';
 
                   if (snapshot.hasData) {
                     if (snapshot.data!.avatar != null && snapshot.data!.avatar!.isNotEmpty) {
-                      avatarImage = NetworkImage('${ApiService.rootUrl}${snapshot.data!.avatar}');
+                      avatarUrl = ApiService.resolveUrl(snapshot.data!.avatar);
                     }
                     email = snapshot.data!.email;
                     uid = snapshot.data!.id.toString();
@@ -109,7 +119,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         children: [
                           CircleAvatar(
                             radius: 40,
-                            backgroundImage: avatarImage,
+                            backgroundColor: const Color(0xFF1C1D21),
+                            backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl) : null,
+                            child: avatarUrl == null
+                                ? const Icon(Icons.person_rounded, color: Colors.white54, size: 34)
+                                : null,
                           ),
                           Container(
                             width: 16,
@@ -180,11 +194,16 @@ Container(
         borderRadius: BorderRadius.circular(19),
       ),
     ),
-    onPressed: () {
-      Navigator.push(
+    onPressed: () async {
+      final updated = await Navigator.push<bool>(
         context,
         MaterialPageRoute(builder: (_) => const EditProfileScreen()),
       );
+      if (updated == true && mounted) {
+        setState(() {
+          userFuture = ApiService.getUserProfile();
+        });
+      }
     },
     child: Row(
       mainAxisAlignment: MainAxisAlignment.center,
