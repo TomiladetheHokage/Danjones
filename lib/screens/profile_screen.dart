@@ -11,6 +11,7 @@ import 'p2p/my_ads_screen.dart';
 import 'kyc/verification_center_screen.dart';
 import 'legal/about_legal_screen.dart';
 import 'notifications_screen.dart';
+import 'payment_methods_screen.dart';
 import '../services/api_service.dart';
 import '../services/data_store.dart';
 import '../services/crypto_service.dart';
@@ -261,15 +262,18 @@ const SizedBox(height: 30),
               ]),
               const SizedBox(height: 16),
               _buildMenuGroup([
-                // _buildMenuItem(
-                //   imagePath: 'assets/icons/payment.png',
-                //   title: 'Payment Methods',
-                //   subtitle: 'Manage NGN Bank Accounts',
-                //   trailing: _comingSoonBadge(),
-                //   onTap: () {
-                //     _showComingSoon(context);
-                //   },
-                // ),
+                _buildMenuItem(
+                  imagePath: 'assets/icons/payment.png',
+                  title: 'Payment Methods',
+                  subtitle: 'Manage NGN Bank Accounts',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const PaymentMethodsScreen()),
+                    );
+                  },
+                ),
                 _buildMenuItem(
                   imagePath: 'assets/icons/security.png',
                   title: 'Security Center',
