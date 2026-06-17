@@ -42,6 +42,21 @@ class _P2PSellerReleaseScreenState extends State<P2PSellerReleaseScreen> {
 
   Future<void> _confirmRelease() async {
     if (_isPinVerified == true) {
+      if (widget.tradeId <= 0) {
+        if (!mounted) return;
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => P2POrderCompletedScreen(
+              fiatAmount: widget.fiatAmount,
+              cryptoAmount: widget.cryptoAmount,
+              currencySymbol: widget.currencySymbol,
+              sellerName: widget.buyerName,
+            ),
+          ),
+        );
+        return;
+      }
       await _releaseCrypto();
       return;
     }
@@ -75,6 +90,10 @@ class _P2PSellerReleaseScreenState extends State<P2PSellerReleaseScreen> {
   }
 
   Future<void> _releaseCrypto() async {
+    if (widget.tradeId <= 0) {
+      return;
+    }
+
     setState(() => _isReleasing = true);
     try {
       await ApiService.completeP2pTrade(tradeId: widget.tradeId);
@@ -178,7 +197,7 @@ class _P2PSellerReleaseScreenState extends State<P2PSellerReleaseScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          'Order #${widget.tradeId}',
+          widget.tradeId > 0 ? 'Order #${widget.tradeId}' : 'Sell Order',
           style: AppTheme.inter(
             fontSize: 18,
             fontWeight: FontWeight.w600,
@@ -373,7 +392,11 @@ class _P2PSellerReleaseScreenState extends State<P2PSellerReleaseScreen> {
 
             _buildPrimaryButton(
               context,
-              _isReleasing ? 'Processing...' : ((_isPinVerified == true) ? 'Release Crypto' : 'Input PIN'),
+              _isReleasing
+                  ? 'Processing...'
+                  : ((_isPinVerified == true)
+                      ? 'Release Crypto'
+                      : 'Input PIN'),
               (!_isReleasing && _bankConfirmed) ? _confirmRelease : null,
               hasArrow: !_isReleasing,
             ),

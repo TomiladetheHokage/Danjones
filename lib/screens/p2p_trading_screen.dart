@@ -194,17 +194,25 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> with WidgetsBinding
     }
   }
 
-  List<P2PAd> _filterAds(List<P2PAd> all) {
-    return all
-        .where((ad) =>
-            ad.currencySymbol.toUpperCase() ==
-                _selectedToken.toUpperCase() &&
-            ad.isActive)
+  List<P2PAd> _filterAds(List<P2PAd> all, {required bool isBuySide}) {
+    final activeAds = all.where((ad) => ad.isActive).toList();
+
+    final tokenAndSide = activeAds.where((ad) {
+      return ad.currencySymbol.toUpperCase() == _selectedToken.toUpperCase() &&
+          ad.type.toLowerCase() == (isBuySide ? 'sell' : 'buy');
+    }).toList();
+    if (tokenAndSide.isNotEmpty) return tokenAndSide;
+
+    final tokenOnly = activeAds
+        .where((ad) => ad.currencySymbol.toUpperCase() == _selectedToken.toUpperCase())
         .toList();
+    if (tokenOnly.isNotEmpty) return tokenOnly;
+
+    return activeAds;
   }
 
   List<P2PTrade> _filterTrades(List<P2PTrade> all, {required bool isBuyTab}) {
-    final currentUserId = DataStore.instance.dashboard.value?.user?.id;
+    final currentUserId = DataStore.instance.dashboard.value?.user.id;
     if (currentUserId == null) return [];
 
     if (isBuyTab) {
@@ -624,72 +632,34 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> with WidgetsBinding
             _buildBuySellSegment(),
             _buildFiltersRow(),
             Expanded(
-              child: _isBuySelected
-                  ? FutureBuilder<List<P2PAd>>(
-                      future: _adsFuture,
-                      builder: (ctx, snap) {
-                        if (snap.connectionState == ConnectionState.waiting) {
-                          return const Center(
-                            child: CircularProgressIndicator(
-                                color: Color(0xFFE4B53E), strokeWidth: 2),
-                          );
-                        }
-                        if (snap.hasError) {
-                          return _buildAdsError(snap.error.toString());
-                        }
-                        final ads = _filterAds(snap.data ?? []);
-                        if (ads.isEmpty) return _buildAdsEmpty();
-                        return ListView.separated(
-                          physics: const BouncingScrollPhysics(),
-                          padding: const EdgeInsets.only(
-                              left: 16, right: 16, top: 8, bottom: 100),
-                          itemCount: ads.length,
-                          separatorBuilder: (_, __) =>
-                              const SizedBox(height: 16),
-                          itemBuilder: (_, i) => _buildAdCard(ads[i]),
-                        );
-                      },
-                    )
-                  : FutureBuilder<List<P2PTrade>>(
-                      future: _tradesFuture,
-                      builder: (ctx, snap) {
-                        final rawList = snap.data ?? _cachedTrades;
-                        final isFirstLoad =
-                            snap.connectionState == ConnectionState.waiting &&
-                                _cachedTrades.isEmpty;
-
-                        if (isFirstLoad) {
-                          return const Center(
-                            child: CircularProgressIndicator(
-                                color: Color(0xFFE4B53E), strokeWidth: 2),
-                          );
-                        }
-                        if (snap.hasError && _cachedTrades.isEmpty) {
-                          return _buildTradesError(snap.error.toString());
-                        }
-                        final trades =
-                            _filterTrades(rawList, isBuyTab: false);
-                        if (trades.isEmpty) return _buildTradesEmpty();
-                        return RefreshIndicator(
-                          color: const Color(0xFFE4B53E),
-                          backgroundColor: const Color(0xFF1A1A1E),
-                          onRefresh: () async => _refreshTrades(),
-                          child: ListView.separated(
-                            physics: const BouncingScrollPhysics(),
-                            padding: const EdgeInsets.only(
-                                left: 16, right: 16, top: 8, bottom: 100),
-                            itemCount: trades.length,
-                            separatorBuilder: (_, __) =>
-                                const SizedBox(height: 14),
-                            itemBuilder: (_, i) => _buildTradeCard(
-                              trades[i],
-                              showSellAction: true,
-                              isBuyTab: false,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
+              child: FutureBuilder<List<P2PAd>>(
+                future: _adsFuture,
+                builder: (ctx, snap) {
+                  if (snap.connectionState == ConnectionState.waiting) {
+                    return const Center(
+                      child: CircularProgressIndicator(
+                          color: Color(0xFFE4B53E), strokeWidth: 2),
+                    );
+                  }
+                  if (snap.hasError) {
+                    return _buildAdsError(snap.error.toString());
+                  }
+                  final ads = _filterAds(
+                    snap.data ?? [],
+                    isBuySide: _isBuySelected,
+                  );
+                  if (ads.isEmpty) return _buildAdsEmpty();
+                  return ListView.separated(
+                    physics: const BouncingScrollPhysics(),
+                    padding: const EdgeInsets.only(
+                        left: 16, right: 16, top: 8, bottom: 100),
+                    itemCount: ads.length,
+                    separatorBuilder: (_, __) =>
+                        const SizedBox(height: 16),
+                    itemBuilder: (_, i) => _buildAdCard(ads[i]),
+                  );
+                },
+              ),
             ),
           ],
         ),
@@ -745,7 +715,7 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> with WidgetsBinding
             setState(() {
               _isBuySelected = false;
             });
-            _silentRefreshTrades();
+            _refreshAds();
           }),
         ]),
       ),

@@ -133,7 +133,21 @@ class _P2POrderConfirmationScreenState extends State<P2POrderConfirmationScreen>
     if (widget.isSell) {
       if (widget.sellTradeId == null || widget.sellCryptoAmount == null || widget.sellBuyerName == null) {
         if (!mounted) return;
-        _showErrorDialog('Trade details are missing. Please reopen this order.');
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => P2PSellerReleaseScreen(
+              tradeId: 0,
+              fiatAmount: widget.fiatAmount,
+              cryptoAmount: _cryptoAmount,
+              currencySymbol: widget.ad.currencySymbol,
+              buyerName: widget.ad.userName,
+              createdAt: widget.sellCreatedAt,
+              bankName: widget.sellBankName ?? widget.ad.bankName,
+              buyerAvatar: widget.sellBuyerAvatar ?? widget.ad.userAvatar,
+            ),
+          ),
+        );
         return;
       }
 
