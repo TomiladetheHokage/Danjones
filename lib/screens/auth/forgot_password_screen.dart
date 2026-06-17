@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../widgets/custom_text_field.dart';
 import '../../widgets/custom_dialog.dart';
 import '../../services/api_service.dart';
+import 'reset_password_screen.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -35,19 +36,17 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final result = await ApiService.forgotPassword(email: email);
+      await ApiService.forgotPassword(email: email);
       if (!mounted) return;
-      final message = result['message']?.toString() ??
-          'If that email is registered, you will receive a reset link shortly.';
-      CustomDialog.showSuccess(
-        context,
-        title: 'Email Sent',
-        message: message,
-        onButtonPressed: () {
-          Navigator.of(context).pop(); // close dialog
-          Navigator.of(context).pop(); // back to login
-        },
-      );
+
+      // Navigate to reset password screen
+      if (mounted) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (_) => ResetPasswordScreen(email: email),
+          ),
+        );
+      }
     } catch (e) {
       if (!mounted) return;
       CustomDialog.showError(

@@ -107,6 +107,8 @@ class _P2POrderConfirmationScreenState extends State<P2POrderConfirmationScreen>
               currencySymbol: widget.ad.currencySymbol,
               buyerName: widget.ad.userName,
               createdAt: createdAt,
+              bankName: widget.ad.bankName,
+               buyerAvatar: widget.ad.userAvatar,
             ),
           ),
         );
@@ -126,6 +128,7 @@ class _P2POrderConfirmationScreenState extends State<P2POrderConfirmationScreen>
               bankName: widget.ad.bankName,
               bankAccountNumber: widget.ad.bankAccountNumber,
               bankAccountName: widget.ad.bankAccountName,
+               sellerAvatar: widget.ad.userAvatar,
             ),
           ),
         );
@@ -326,6 +329,7 @@ class _P2POrderConfirmationScreenState extends State<P2POrderConfirmationScreen>
             // User Header — show user's real wallet balance for this coin
             P2PUserHeader(
               name: widget.ad.userName,
+              avatarUrl: widget.ad.userAvatar,
               stats: _userBalance(),
               showBackground: true,
             ),

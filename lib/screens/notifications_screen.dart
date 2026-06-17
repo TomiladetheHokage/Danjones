@@ -22,7 +22,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   void _refresh() {
-    setState(() => _notificationsFuture = ApiService.getNotifications());
+    setState(() {
+      _notificationsFuture = ApiService.getNotifications();
+    });
   }
 
   Future<void> _markAsRead(AppNotification notification) async {

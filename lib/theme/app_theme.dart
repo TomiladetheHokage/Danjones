@@ -8,6 +8,7 @@ class AppTheme {
     Color color = Colors.white,
     double letterSpacing = 0,
     double height = 1.5,
+    TextStyle? style,
   }) {
     return GoogleFonts.inter(
       fontSize: fontSize,
@@ -15,7 +16,7 @@ class AppTheme {
       color: color,
       letterSpacing: letterSpacing,
       height: height,
-    );
+    ).merge(style);
   }
 
   // Predefined text styles

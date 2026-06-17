@@ -16,7 +16,9 @@ class P2PTrade {
   final String adTerms;
 
   final String sellerName;
+  final String? sellerAvatar;
   final String buyerName;
+  final String? buyerAvatar;
   final String currencyName;
   final String currencySymbol;
   final String currencyImage;
@@ -42,7 +44,9 @@ class P2PTrade {
     required this.adPrice,
     required this.adTerms,
     required this.sellerName,
+    this.sellerAvatar,
     required this.buyerName,
+    this.buyerAvatar,
     required this.currencyName,
     required this.currencySymbol,
     required this.currencyImage,
@@ -78,7 +82,9 @@ class P2PTrade {
       adPrice: (advertisement['price'] as num?)?.toDouble() ?? 0,
       adTerms: (advertisement['terms'] ?? '').toString(),
       sellerName: (seller['name'] ?? 'Unknown Seller').toString(),
+      sellerAvatar: seller['avatar'] as String?,
       buyerName: (buyer['name'] ?? 'Unknown Buyer').toString(),
+      buyerAvatar: buyer['avatar'] as String?,
       currencyName: (currency['name'] ?? '').toString(),
       currencySymbol: (currency['symbol'] ?? '').toString(),
       currencyImage: (currency['image'] ?? '').toString(),

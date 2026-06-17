@@ -5,6 +5,7 @@ import '../theme/app_theme.dart';
 import '../services/data_store.dart';
 import '../services/api_service.dart';
 import '../models/currency.dart';
+import '../models/wallet.dart';
 import 'p2p/p2p_payment_method_screen.dart';
 
 class CreateAdScreen extends StatefulWidget {
@@ -81,6 +82,58 @@ class _CreateAdScreenState extends State<CreateAdScreen> {
     _maxLimitController.dispose();
     _termsController.dispose();
     super.dispose();
+  }
+
+  // Helper: Get selected asset's wallet from dashboard
+  Wallet? _getSelectedAssetWallet() {
+    final dashboard = DataStore.instance.dashboard.value;
+    if (dashboard == null || _selectedAsset == null) return null;
+    try {
+      return dashboard.wallets.firstWhere(
+        (w) => w.currency.id == _selectedAsset!.id,
+      );
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Helper: Format number with commas (e.g., 1000000 -> 1,000,000)
+  String _formatNumberWithCommas(String value) {
+    if (value.isEmpty) return '';
+    final parts = value.split('.');
+    final intPart = parts[0];
+    final decimalPart = parts.length > 1 ? '.${parts[1]}' : '';
+    
+    final formatted = intPart.replaceAllMapped(
+      RegExp(r'\B(?=(\d{3})+(?!\d))'),
+      (match) => ',',
+    );
+    
+    return formatted + decimalPart;
+  }
+
+  // Helper: Remove commas from formatted number
+  String _removeCommas(String value) {
+    return value.replaceAll(',', '');
+  }
+
+  // Helper: Set total amount to max available
+  void _setMaxAmount() {
+    final wallet = _getSelectedAssetWallet();
+    if (wallet != null) {
+      setState(() {
+        _totalAmountController.text = wallet.balance;
+      });
+    }
+  }
+
+  // Helper: Get available balance text for display
+  String _getAvailableBalanceText() {
+    final wallet = _getSelectedAssetWallet();
+    if (wallet == null) return 'N/A';
+    final balance = double.tryParse(wallet.balance) ?? 0;
+    final symbol = _selectedAsset?.symbol.toUpperCase() ?? 'BTC';
+    return '${_formatNumberWithCommas(balance.toStringAsFixed(2))} $symbol';
   }
 
   void _showErrorDialog(String message) {
@@ -239,10 +292,10 @@ class _CreateAdScreenState extends State<CreateAdScreen> {
       return;
     }
     
-    final price = double.tryParse(_priceController.text);
-    final totalAmount = double.tryParse(_totalAmountController.text);
-    final minLimit = double.tryParse(_minLimitController.text);
-    final maxLimit = double.tryParse(_maxLimitController.text);
+    final price = double.tryParse(_removeCommas(_priceController.text));
+    final totalAmount = double.tryParse(_removeCommas(_totalAmountController.text));
+    final minLimit = double.tryParse(_removeCommas(_minLimitController.text));
+    final maxLimit = double.tryParse(_removeCommas(_maxLimitController.text));
     final terms = _termsController.text.trim();
 
     if (price == null || totalAmount == null || minLimit == null || maxLimit == null) {
@@ -356,7 +409,7 @@ class _CreateAdScreenState extends State<CreateAdScreen> {
             const SizedBox(height: 8),
             _buildAmountInput(),
             const SizedBox(height: 8),
-            Text('Available Balance: N/A', style: AppTheme.inter(color: const Color(0xFFE4B53E), fontSize: 11)),
+            Text('Available Balance: ${_getAvailableBalanceText()}', style: AppTheme.inter(color: const Color(0xFFE4B53E), fontSize: 11)),
             
             const SizedBox(height: 24),
             Row(
@@ -895,6 +948,16 @@ class _CreateAdScreenState extends State<CreateAdScreen> {
           hintText: 'Enter fixed NGN price',
           hintStyle: AppTheme.inter(color: Colors.white30, fontSize: 14),
         ),
+        onChanged: (value) {
+          final cleanValue = _removeCommas(value);
+          if (cleanValue.isNotEmpty) {
+            final formatted = _formatNumberWithCommas(cleanValue);
+            _priceController.value = _priceController.value.copyWith(
+              text: formatted,
+              selection: TextSelection.collapsed(offset: formatted.length),
+            );
+          }
+        },
       ),
     );
   }
@@ -922,17 +985,33 @@ class _CreateAdScreenState extends State<CreateAdScreen> {
                 hintText: 'Amount',
                 hintStyle: AppTheme.inter(color: Colors.white30, fontSize: 14),
               ),
+              onChanged: (value) {
+                final cleanValue = _removeCommas(value);
+                if (cleanValue.isNotEmpty) {
+                  final formatted = _formatNumberWithCommas(cleanValue);
+                  _totalAmountController.value = _totalAmountController.value.copyWith(
+                    text: formatted,
+                    selection: TextSelection.collapsed(offset: formatted.length),
+                  );
+                }
+              },
             ),
           ),
-          RichText(
-            text: TextSpan(
-              text: '${_selectedAsset?.symbol.toUpperCase() ?? 'BTC'} | ',
-              style: AppTheme.inter(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500),
-              children: [
-                TextSpan(text: 'MAX', style: AppTheme.inter(color: const Color(0xFFE4B53E), fontSize: 13, fontWeight: FontWeight.bold)),
-              ]
-            )
-          )
+          GestureDetector(
+            onTap: _setMaxAmount,
+            child: RichText(
+              text: TextSpan(
+                text: '${_selectedAsset?.symbol.toUpperCase() ?? 'BTC'} | ',
+                style: AppTheme.inter(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500),
+                children: [
+                  TextSpan(
+                    text: 'MAX',
+                    style: AppTheme.inter(color: const Color(0xFFE4B53E), fontSize: 13, fontWeight: FontWeight.bold),
+                  ),
+                ]
+              )
+            ),
+          ),
         ],
       ),
     );

@@ -22,7 +22,9 @@ class P2PAwaitingPaymentScreen extends StatefulWidget {
   final String? bankAccountNumber;
   final String? bankAccountName;
 
-  const P2PAwaitingPaymentScreen({
+    final String? sellerAvatar;
+
+    const P2PAwaitingPaymentScreen({
     super.key,
     required this.tradeId,
     required this.fiatAmount,
@@ -35,6 +37,7 @@ class P2PAwaitingPaymentScreen extends StatefulWidget {
     this.bankName,
     this.bankAccountNumber,
     this.bankAccountName,
+    this.sellerAvatar,
   });
 
   @override
@@ -232,6 +235,8 @@ class _P2PAwaitingPaymentScreenState extends State<P2PAwaitingPaymentScreen> {
             pricePerUnit: widget.pricePerUnit,
             currencySymbol: widget.currencySymbol,
             sellerName: widget.sellerName,
+            sellerAvatar: widget.sellerAvatar,
+            createdAt: widget.createdAt,
           ),
         ),
       );
@@ -442,7 +447,7 @@ class _P2PAwaitingPaymentScreenState extends State<P2PAwaitingPaymentScreen> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
+          onPressed: _isLoading ? null : _handleCancel,
         ),
         title: Text(
           'Order #${widget.tradeId}',
@@ -533,7 +538,34 @@ class _P2PAwaitingPaymentScreenState extends State<P2PAwaitingPaymentScreen> {
                 children: [
                   Row(
                     children: [
-                      Container(
+                        ClipOval(
+                          child: widget.sellerAvatar != null && widget.sellerAvatar!.isNotEmpty
+                            ? Image.network(
+                                ApiService.resolveUrl(widget.sellerAvatar!) ?? widget.sellerAvatar!,
+                                width: 44,
+                                height: 44,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Container(
+                                    width: 44,
+                                    height: 44,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      gradient: const LinearGradient(
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                        colors: [Color(0xFFB88A2D), Color(0xFFE4B53E)],
+                                      ),
+                                    ),
+                                    alignment: Alignment.center,
+                                    child: Text(
+                                      avatarText,
+                                      style: AppTheme.inter(color: Colors.black, fontSize: 16, fontWeight: FontWeight.w700),
+                                    ),
+                                  );
+                                },
+                              )
+                            : Container(
                         width: 44,
                         height: 44,
                         decoration: BoxDecoration(
@@ -549,7 +581,8 @@ class _P2PAwaitingPaymentScreenState extends State<P2PAwaitingPaymentScreen> {
                           avatarText,
                           style: AppTheme.inter(color: Colors.black, fontSize: 16, fontWeight: FontWeight.w700),
                         ),
-                      ),
+                            ),
+                        ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(

@@ -1,8 +1,80 @@
 import 'package:flutter/material.dart';
+import '../../services/api_service.dart';
 import '../../theme/app_theme.dart';
 
 class P2PChatScreen extends StatelessWidget {
-  const P2PChatScreen({super.key});
+  final int tradeId;
+  final double fiatAmount;
+  final double cryptoAmount;
+  final String currencySymbol;
+  final String counterpartyName;
+  final String? counterpartyAvatar;
+  final bool isBuyer;
+  final DateTime? createdAt;
+
+  const P2PChatScreen({
+    super.key,
+    required this.tradeId,
+    required this.fiatAmount,
+    required this.cryptoAmount,
+    required this.currencySymbol,
+    required this.counterpartyName,
+    this.counterpartyAvatar,
+    required this.isBuyer,
+    this.createdAt,
+  });
+
+  String _formatNaira(double amount) {
+    final parts = amount.toStringAsFixed(2).split('.');
+    final whole = parts[0];
+    final buffer = StringBuffer();
+
+    for (int i = 0; i < whole.length; i++) {
+      final reversedIndex = whole.length - i;
+      buffer.write(whole[i]);
+      if (reversedIndex > 1 && reversedIndex % 3 == 1) {
+        buffer.write(',');
+      }
+    }
+
+    return 'N${buffer.toString()}.${parts[1]}';
+  }
+
+  String _formatCrypto(double amount) {
+    return '${amount.toStringAsFixed(8)} $currencySymbol';
+  }
+
+  String _formatTimeLeft() {
+    if (createdAt == null) return '--:--';
+    final remaining = 900 - DateTime.now().difference(createdAt!).inSeconds;
+    final clamped = remaining.clamp(0, 900);
+    final mins = clamped ~/ 60;
+    final secs = clamped % 60;
+    return '${mins.toString().padLeft(2, '0')}:${secs.toString().padLeft(2, '0')}';
+  }
+
+  String _formatDayLabel() {
+    final source = createdAt ?? DateTime.now();
+    final now = DateTime.now();
+    if (source.year == now.year && source.month == now.month && source.day == now.day) {
+      return 'Today';
+    }
+    return '${source.day}/${source.month}/${source.year}';
+  }
+
+  String _formatCreatedTime() {
+    final source = createdAt ?? DateTime.now();
+    final hour = source.hour % 12 == 0 ? 12 : source.hour % 12;
+    final minute = source.minute.toString().padLeft(2, '0');
+    final suffix = source.hour >= 12 ? 'PM' : 'AM';
+    return '$hour:$minute $suffix';
+  }
+
+  String get _counterpartyHandle {
+    final trimmed = counterpartyName.trim();
+    if (trimmed.startsWith('@')) return trimmed;
+    return '@$trimmed';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -15,7 +87,7 @@ class P2PChatScreen extends StatelessWidget {
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text('Order #29384920', style: AppTheme.inter(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.white)),
+        title: Text('Order #$tradeId', style: AppTheme.inter(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.white)),
         centerTitle: false,
       ),
       body: Column(
@@ -29,21 +101,21 @@ class P2PChatScreen extends StatelessWidget {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Buying', style: AppTheme.inter(color: Colors.white54, fontSize: 11)),
-                    Text('100 USDT', style: AppTheme.inter(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
+                    Text(isBuyer ? 'Buying' : 'Selling', style: AppTheme.inter(color: Colors.white54, fontSize: 11)),
+                    Text(_formatCrypto(cryptoAmount), style: AppTheme.inter(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
                   ],
                 ),
                 Column(
                   children: [
                     Text('Total Cost', style: AppTheme.inter(color: Colors.white54, fontSize: 11)),
-                    Text('125,000 NGN', style: AppTheme.inter(color: const Color(0xFFE4B53E), fontSize: 13, fontWeight: FontWeight.bold)),
+                    Text(_formatNaira(fiatAmount), style: AppTheme.inter(color: const Color(0xFFE4B53E), fontSize: 13, fontWeight: FontWeight.bold)),
                   ],
                 ),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text('Time Left', style: AppTheme.inter(color: Colors.white54, fontSize: 11)),
-                    Text('14:59', style: AppTheme.inter(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
+                    Text(_formatTimeLeft(), style: AppTheme.inter(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
                   ],
                 ),
               ],
@@ -69,19 +141,17 @@ class P2PChatScreen extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Container(width: 40, height: 40, decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFF1E1E1E)), alignment: Alignment.center, child: const Text('C', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
+                    _buildAvatar(),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('CryptoKingNG', style: AppTheme.inter(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600)),
+                          Text(counterpartyName, style: AppTheme.inter(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600)),
                           const SizedBox(height: 2),
-                          Row(
-                            children: [
-                              Text('98.5% Completion', style: AppTheme.inter(color: const Color(0xFFE4B53E), fontSize: 11)),
-                              Text(' - replies in 5m', style: AppTheme.inter(color: Colors.white54, fontSize: 11)),
-                            ],
+                          Text(
+                            '${isBuyer ? 'Seller' : 'Buyer'} $_counterpartyHandle',
+                            style: AppTheme.inter(color: const Color(0xFFE4B53E), fontSize: 11),
                           ),
                         ],
                       ),
@@ -90,11 +160,12 @@ class P2PChatScreen extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 24),
-                Center(child: Text('Today', style: AppTheme.inter(color: Colors.white38, fontSize: 11))),
+                Center(child: Text(_formatDayLabel(), style: AppTheme.inter(color: Colors.white38, fontSize: 11))),
                 const SizedBox(height: 16),
-                Center(child: Text('Order Created. Please pay within 15 mins.', style: AppTheme.inter(color: Colors.white38, fontSize: 11))),
+                Center(child: Text('Order created at ${_formatCreatedTime()}.', style: AppTheme.inter(color: Colors.white38, fontSize: 11))),
                 const SizedBox(height: 24),
-                _buildMessageBubble('Do not include crypto-related terms (e.g., BTC, USDT) in the transfer remarks.', '10:52', false),
+                _buildMessageBubble('Do not include crypto-related terms (e.g., BTC, USDT) in the transfer remarks.', _formatCreatedTime(), false),
+                _buildSystemNote('Live chat messages are not available from the API yet. Trade details on this screen are now pulled from the active order.'),
               ],
             ),
           ),
@@ -116,9 +187,10 @@ class P2PChatScreen extends StatelessWidget {
                       border: Border.all(color: Colors.white.withOpacity(0.05)),
                     ),
                     child: TextField(
+                      readOnly: true,
                       style: AppTheme.inter(color: Colors.white),
                       decoration: InputDecoration(
-                        hintText: 'Type message...',
+                        hintText: 'Messaging endpoint not available yet',
                         hintStyle: AppTheme.inter(color: Colors.white38),
                         border: InputBorder.none,
                       ),
@@ -139,6 +211,46 @@ class P2PChatScreen extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildAvatar() {
+    if (counterpartyAvatar != null && counterpartyAvatar!.isNotEmpty) {
+      return ClipOval(
+        child: Image.network(
+          ApiService.resolveUrl(counterpartyAvatar!) ?? counterpartyAvatar!,
+          width: 40,
+          height: 40,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) => _buildFallbackAvatar(),
+        ),
+      );
+    }
+
+    return _buildFallbackAvatar();
+  }
+
+  Widget _buildFallbackAvatar() {
+    final initial = counterpartyName.isNotEmpty ? counterpartyName.substring(0, 1).toUpperCase() : '?';
+    return Container(
+      width: 40,
+      height: 40,
+      decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFF1E1E1E)),
+      alignment: Alignment.center,
+      child: Text(initial, style: AppTheme.inter(color: Colors.white, fontWeight: FontWeight.bold)),
+    );
+  }
+
+  Widget _buildSystemNote(String message) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Center(
+        child: Text(
+          message,
+          textAlign: TextAlign.center,
+          style: AppTheme.inter(color: Colors.white38, fontSize: 11, height: 1.4),
+        ),
       ),
     );
   }

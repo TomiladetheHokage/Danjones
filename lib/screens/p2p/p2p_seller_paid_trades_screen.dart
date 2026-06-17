@@ -38,7 +38,9 @@ class _P2PSellerPaidTradesScreenState extends State<P2PSellerPaidTradesScreen> {
   }
 
   void _refresh() {
-    setState(() => _tradesFuture = _loadPaidTrades());
+    setState(() {
+      _tradesFuture = _loadPaidTrades();
+    });
   }
 
   Future<void> _confirmRelease(P2PTrade trade) async {
@@ -100,7 +102,7 @@ class _P2PSellerPaidTradesScreenState extends State<P2PSellerPaidTradesScreen> {
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF33D17A),
+              backgroundColor: const Color(0xFFE4B53E),
               foregroundColor: Colors.black,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
@@ -349,12 +351,12 @@ class _P2PSellerPaidTradesScreenState extends State<P2PSellerPaidTradesScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF33D17A).withOpacity(0.12),
+                  color: const Color(0xFFE4B53E).withOpacity(0.12),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
                   'PAID',
-                  style: AppTheme.inter(color: const Color(0xFF33D17A), fontSize: 10, fontWeight: FontWeight.w700),
+                  style: AppTheme.inter(color: const Color(0xFFE4B53E), fontSize: 10, fontWeight: FontWeight.w700),
                 ),
               ),
             ],
@@ -410,7 +412,7 @@ class _P2PSellerPaidTradesScreenState extends State<P2PSellerPaidTradesScreen> {
               onPressed: isReleasing ? null : () => _confirmRelease(trade),
               style: ElevatedButton.styleFrom(
                 elevation: 0,
-                backgroundColor: const Color(0xFF33D17A),
+                backgroundColor: const Color(0xFFE4B53E),
                 foregroundColor: Colors.black,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),

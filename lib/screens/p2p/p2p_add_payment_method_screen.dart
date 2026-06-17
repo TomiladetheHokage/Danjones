@@ -245,8 +245,12 @@ class _P2PAddPaymentMethodScreenState extends State<P2PAddPaymentMethodScreen> {
     setState(() => _isVerifying = true);
 
     try {
+      final bankId = (_selectedBank!['id'] as num?)?.toInt();
+      if (bankId == null) {
+        throw Exception('Selected bank is missing ID. Please choose another bank.');
+      }
       final result = await ApiService.verifyBankAccount(
-        bankId: _selectedBank!['id'] as int,
+        bankId: bankId,
         accountNumber: accountNumber,
       );
       if (!mounted) return;

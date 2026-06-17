@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 import '../theme/app_theme.dart';
 import '../models/p2p_ad.dart';
 import '../models/p2p_trade.dart';
@@ -18,7 +20,7 @@ class P2PTradingScreen extends StatefulWidget {
   State<P2PTradingScreen> createState() => _P2PTradingScreenState();
 }
 
-class _P2PTradingScreenState extends State<P2PTradingScreen> {
+class _P2PTradingScreenState extends State<P2PTradingScreen> with WidgetsBindingObserver {
   int _p2pNavIndex = 0;
 
   // Marketplace tab state
@@ -29,18 +31,123 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> {
   // Orders tab state
   bool _isOrdersBuyTab = true;
   late Future<List<P2PTrade>> _tradesFuture;
+  List<P2PTrade> _cachedTrades = []; // instant display while refreshing
+  bool _tradesRefreshing = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _adsFuture = ApiService.getP2pAds();
-    _tradesFuture = ApiService.getMyP2pTrades();
+    _tradesFuture = ApiService.getMyP2pTrades().then((trades) {
+      _cachedTrades = trades;
+      return trades;
+    });
   }
 
-  void _refreshAds() =>
-      setState(() => _adsFuture = ApiService.getP2pAds());
-  void _refreshTrades() =>
-      setState(() => _tradesFuture = ApiService.getMyP2pTrades());
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _silentRefreshTrades();
+    }
+  }
+
+  void _refreshAds() => setState(() {
+        _adsFuture = ApiService.getP2pAds();
+      });
+  void _refreshTrades() => setState(() {
+        _tradesFuture = ApiService.getMyP2pTrades().then((trades) {
+          _cachedTrades = trades;
+          return trades;
+        });
+      });
+
+  Future<void> _silentRefreshTrades() async {
+    if (_tradesRefreshing) return;
+    _tradesRefreshing = true;
+    try {
+      final trades = await ApiService.getMyP2pTrades();
+      if (mounted) setState(() => _cachedTrades = trades);
+    } finally {
+      _tradesRefreshing = false;
+    }
+  }
+
+  Future<void> _proceedToOrderConfirmation(P2PAd cachedAd, double fiatAmount, {bool isSell = false}) async {
+    try {
+      // Fetch fresh ad data to ensure latest seller bank details are shown
+      final freshAds = await ApiService.getP2pAds();
+      final freshAd = freshAds.firstWhere(
+        (ad) => ad.id == cachedAd.id,
+        orElse: () => cachedAd, // Fall back to cached if not found
+      );
+
+      if (!mounted) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => P2POrderConfirmationScreen(
+            ad: freshAd,
+            fiatAmount: fiatAmount,
+            isSell: isSell,
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      // If fresh fetch fails, use cached ad
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => P2POrderConfirmationScreen(
+            ad: cachedAd,
+            fiatAmount: fiatAmount,
+            isSell: isSell,
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _callMyTradesEndpoint() async {
+    final now = DateTime.now().millisecondsSinceEpoch.toString();
+    final primaryBase = (kIsWeb && kDebugMode)
+        ? ApiService.liveUrl
+        : ApiService.baseUrl;
+    final fallbackBase = (kIsWeb && kDebugMode)
+        ? ApiService.baseUrl
+        : ApiService.liveUrl;
+    final token = ApiService.authToken;
+
+    Future<http.Response> fetch(String base) {
+      return http.get(
+        Uri.parse('$base/p2p/my-trades?t=$now'),
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token',
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache',
+        },
+      );
+    }
+
+    try {
+      await fetch(primaryBase);
+    } catch (_) {
+      await fetch(fallbackBase);
+    }
+  }
+
+  void _switchOrdersTab(bool isBuyTab) {
+    setState(() => _isOrdersBuyTab = isBuyTab);
+    _silentRefreshTrades(); // fetch fresh data without showing a spinner
+  }
 
   List<P2PAd> _filterAds(List<P2PAd> all) {
     return all
@@ -53,19 +160,20 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> {
 
   List<P2PTrade> _filterTrades(List<P2PTrade> all) {
     final currentUserId = DataStore.instance.dashboard.value?.user?.id;
+    if (currentUserId == null) return [];
+
     if (_isOrdersBuyTab) {
-      return all
-          .where((t) => t.adType.toLowerCase() != 'sell')
-          .toList();
+      return all.where((t) {
+        final adType = t.adType.toLowerCase();
+        if (adType.isNotEmpty) return adType != 'sell';
+        return t.buyerId == currentUserId;
+      }).toList();
     }
-    // Only show sell-side trades where the logged-in user is the seller
-    return all
-        .where((t) =>
-            t.adType.toLowerCase() == 'sell' &&
-            t.status.toLowerCase() == 'pending' &&
-            currentUserId != null &&
-            t.sellerId == currentUserId)
-        .toList();
+
+    // Show paid sell-side trades where the logged-in user is the seller.
+    return all.where((t) {
+      return t.sellerId == currentUserId && t.status.toLowerCase() == 'paid';
+    }).toList();
   }
 
   String _formatNumber(double v) {
@@ -197,14 +305,7 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> {
                           return;
                         }
                         Navigator.pop(ctx);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) =>
-                                P2POrderConfirmationScreen(
-                                    ad: ad, fiatAmount: amt),
-                          ),
-                        );
+                        _proceedToOrderConfirmation(ad, amt);
                       },
                       child: Text('Continue',
                           style: AppTheme.inter(
@@ -284,7 +385,12 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> {
 
       return Expanded(
         child: InkWell(
-          onTap: () => setState(() => _p2pNavIndex = index),
+          onTap: () {
+            setState(() => _p2pNavIndex = index);
+            if (index == 1) {
+              _silentRefreshTrades();
+            }
+          },
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 8),
             child: Column(
@@ -442,16 +548,7 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> {
                           return;
                         }
                         Navigator.pop(ctx);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) =>
-                                P2POrderConfirmationScreen(
-                                    ad: ad,
-                                    fiatAmount: amt,
-                                    isSell: true),
-                          ),
-                        );
+                        _proceedToOrderConfirmation(ad, amt, isSell: true);
                       },
                       child: Text('Continue',
                           style: AppTheme.inter(
@@ -480,31 +577,65 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> {
             _buildBuySellSegment(),
             _buildFiltersRow(),
             Expanded(
-              child: FutureBuilder<List<P2PAd>>(
-                future: _adsFuture,
-                builder: (ctx, snap) {
-                  if (snap.connectionState == ConnectionState.waiting) {
-                    return const Center(
-                      child: CircularProgressIndicator(
-                          color: Color(0xFFE4B53E), strokeWidth: 2),
-                    );
-                  }
-                  if (snap.hasError) {
-                    return _buildAdsError(snap.error.toString());
-                  }
-                  final ads = _filterAds(snap.data ?? []);
-                  if (ads.isEmpty) return _buildAdsEmpty();
-                  return ListView.separated(
-                    physics: const BouncingScrollPhysics(),
-                    padding: const EdgeInsets.only(
-                        left: 16, right: 16, top: 8, bottom: 100),
-                    itemCount: ads.length,
-                    separatorBuilder: (_, __) =>
-                        const SizedBox(height: 16),
-                    itemBuilder: (_, i) => _buildAdCard(ads[i]),
-                  );
-                },
-              ),
+              child: _isBuySelected
+                  ? FutureBuilder<List<P2PAd>>(
+                      future: _adsFuture,
+                      builder: (ctx, snap) {
+                        if (snap.connectionState == ConnectionState.waiting) {
+                          return const Center(
+                            child: CircularProgressIndicator(
+                                color: Color(0xFFE4B53E), strokeWidth: 2),
+                          );
+                        }
+                        if (snap.hasError) {
+                          return _buildAdsError(snap.error.toString());
+                        }
+                        final ads = _filterAds(snap.data ?? []);
+                        if (ads.isEmpty) return _buildAdsEmpty();
+                        return ListView.separated(
+                          physics: const BouncingScrollPhysics(),
+                          padding: const EdgeInsets.only(
+                              left: 16, right: 16, top: 8, bottom: 100),
+                          itemCount: ads.length,
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(height: 16),
+                          itemBuilder: (_, i) => _buildAdCard(ads[i]),
+                        );
+                      },
+                    )
+                  : FutureBuilder<List<P2PTrade>>(
+                      future: _tradesFuture,
+                      builder: (ctx, snap) {
+                        if (snap.connectionState == ConnectionState.waiting) {
+                          return const Center(
+                            child: CircularProgressIndicator(
+                                color: Color(0xFFE4B53E), strokeWidth: 2),
+                          );
+                        }
+                        if (snap.hasError) {
+                          return _buildTradesError(snap.error.toString());
+                        }
+                        final trades = _filterTrades(snap.data ?? []);
+                        if (trades.isEmpty) return _buildTradesEmpty();
+                        return RefreshIndicator(
+                          color: const Color(0xFFE4B53E),
+                          backgroundColor: const Color(0xFF1A1A1E),
+                          onRefresh: () async => _refreshTrades(),
+                          child: ListView.separated(
+                            physics: const BouncingScrollPhysics(),
+                            padding: const EdgeInsets.only(
+                                left: 16, right: 16, top: 8, bottom: 100),
+                            itemCount: trades.length,
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(height: 14),
+                            itemBuilder: (_, i) => _buildTradeCard(
+                              trades[i],
+                              showSellAction: true,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
             ),
           ],
         ),
@@ -556,8 +687,12 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> {
         child: Row(children: [
           _buildSegTab('Buy', _isBuySelected,
               () => setState(() => _isBuySelected = true)),
-          _buildSegTab('Sell', !_isBuySelected,
-              () => setState(() => _isBuySelected = false)),
+          _buildSegTab('Sell', !_isBuySelected, () {
+            setState(() {
+              _isBuySelected = false;
+            });
+            _silentRefreshTrades();
+          }),
         ]),
       ),
     );
@@ -580,8 +715,7 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> {
           child: Text(label,
               style: AppTheme.inter(
                   color: active ? Colors.black : Colors.white54,
-                  fontWeight:
-                      active ? FontWeight.w600 : FontWeight.w500,
+                  fontWeight: active ? FontWeight.w600 : FontWeight.w500,
                   fontSize: 14)),
         ),
       ),
@@ -652,17 +786,48 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 36, height: 36,
-                decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Color(0xFF1E1E1E)),
-                alignment: Alignment.center,
-                child: Text(initials,
-                    style: AppTheme.inter(
-                        color: Colors.white70,
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold)),
+              ClipOval(
+                child: ad.userAvatar != null && ad.userAvatar!.isNotEmpty
+                    ? Image.network(
+                        ApiService.resolveUrl(ad.userAvatar!) ?? ad.userAvatar!,
+                        width: 36,
+                        height: 36,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            width: 36,
+                            height: 36,
+                            decoration: const BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Color(0xFF1E1E1E),
+                            ),
+                            alignment: Alignment.center,
+                            child: Text(
+                              initials,
+                              style: AppTheme.inter(
+                                color: Colors.white70,
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          );
+                        },
+                      )
+                    : Container(
+                        width: 36,
+                        height: 36,
+                        decoration: const BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Color(0xFF1E1E1E)),
+                        alignment: Alignment.center,
+                        child: Text(
+                          initials,
+                          style: AppTheme.inter(
+                              color: Colors.white70,
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold),
+                        ),
+                      ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -680,9 +845,9 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> {
                           color: Colors.green, size: 14),
                     ]),
                     const SizedBox(height: 4),
-                    Text('450 trades | 98.5%',
-                        style: AppTheme.inter(
-                            color: Colors.white54, fontSize: 11)),
+                    // Text('450 trades | 98.5%',
+                    //     style: AppTheme.inter(
+                    //         color: Colors.white54, fontSize: 11)),
                   ],
                 ),
               ),
@@ -732,29 +897,25 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // payment method dots (empty for now)
-              const SizedBox(),
+              Expanded(
+                child: Text(
+                  ad.bankName ?? '',
+                  style: AppTheme.inter(
+                      color: Colors.white38,
+                      fontSize: 11),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
               GestureDetector(
                 onTap: () => isBuy
                     ? _showBuyAmountDialog(ad)
-                    : Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => P2PSellerReleaseScreen(
-                            tradeId: 0,
-                            fiatAmount: ad.maxLimit,
-                            cryptoAmount: ad.availableAmount,
-                            currencySymbol: ad.currencySymbol,
-                            buyerName: ad.userName,
-                          ),
-                        ),
-                      ),
+                    : _callMyTradesEndpoint(),
                 child: Container(
                   padding: const EdgeInsets.symmetric(
                       horizontal: 24, vertical: 8),
                   decoration: BoxDecoration(
                     color: isBuy
-                        ? const Color(0xFFE4B53E)
+                        ? const Color(0xFF33D17A)
                         : Colors.redAccent,
                     borderRadius: BorderRadius.circular(20),
                   ),
@@ -763,7 +924,7 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> {
                         ? 'Buy ${ad.currencySymbol}'
                         : 'Sell ${ad.currencySymbol}',
                     style: AppTheme.inter(
-                        color: Colors.black,
+                        color: Colors.white,
                         fontSize: 13,
                         fontWeight: FontWeight.w600),
                   ),
@@ -841,32 +1002,50 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> {
         child: FutureBuilder<List<P2PTrade>>(
           future: _tradesFuture,
           builder: (ctx, snap) {
-            if (snap.connectionState == ConnectionState.waiting) {
+            // Use cached data immediately — no spinner on subsequent loads
+            final rawList = snap.data ?? _cachedTrades;
+            final isFirstLoad = snap.connectionState == ConnectionState.waiting && _cachedTrades.isEmpty;
+
+            if (isFirstLoad) {
               return const Center(
                 child: CircularProgressIndicator(
                     color: Color(0xFFE4B53E), strokeWidth: 2),
               );
             }
-            if (snap.hasError) {
+            if (snap.hasError && _cachedTrades.isEmpty) {
               return _buildTradesError(snap.error.toString());
             }
-            final trades = _filterTrades(snap.data ?? []);
-            if (trades.isEmpty) return _buildTradesEmpty();
-            return RefreshIndicator(
-              color: const Color(0xFFE4B53E),
-              backgroundColor: const Color(0xFF1A1A1E),
-              onRefresh: () async => _refreshTrades(),
-              child: ListView.separated(
-                physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.only(
-                    left: 16, right: 16, top: 8, bottom: 32),
-                itemCount: trades.length,
-                separatorBuilder: (_, __) =>
-                    const SizedBox(height: 14),
-                itemBuilder: (_, i) =>
-                    _buildTradeCard(trades[i]),
-              ),
-            );
+            final trades = _filterTrades(rawList);
+              final child = trades.isEmpty
+                  ? _buildTradesEmpty()
+                  : RefreshIndicator(
+                      color: const Color(0xFFE4B53E),
+                      backgroundColor: const Color(0xFF1A1A1E),
+                      onRefresh: () async => _refreshTrades(),
+                      child: ListView.separated(
+                        physics: const BouncingScrollPhysics(),
+                        padding: const EdgeInsets.only(
+                            left: 16, right: 16, top: 8, bottom: 32),
+                        itemCount: trades.length,
+                        separatorBuilder: (_, __) =>
+                            const SizedBox(height: 14),
+                        itemBuilder: (_, i) =>
+                            _buildTradeCard(trades[i]),
+                      ),
+                    );
+              return AnimatedSwitcher(
+                duration: const Duration(milliseconds: 250),
+                switchInCurve: Curves.easeOut,
+                switchOutCurve: Curves.easeIn,
+                transitionBuilder: (child, animation) => FadeTransition(
+                  opacity: animation,
+                  child: child,
+                ),
+                child: KeyedSubtree(
+                  key: ValueKey(_isOrdersBuyTab),
+                  child: child,
+                ),
+              );
           },
         ),
       ),
@@ -886,15 +1065,15 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> {
         ),
         child: Row(children: [
           _buildSegTab('Buy Orders', _isOrdersBuyTab,
-              () => setState(() => _isOrdersBuyTab = true)),
+              () => _switchOrdersTab(true)),
           _buildSegTab('Sell Orders', !_isOrdersBuyTab,
-              () => setState(() => _isOrdersBuyTab = false)),
+              () => _switchOrdersTab(false)),
         ]),
       ),
     );
   }
 
-  Widget _buildTradeCard(P2PTrade trade) {
+  Widget _buildTradeCard(P2PTrade trade, {bool showSellAction = false}) {
     final counterparty =
         _isOrdersBuyTab ? trade.sellerName : trade.buyerName;
     final initials = counterparty.length >= 2
@@ -915,11 +1094,12 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> {
                     cryptoAmount: trade.cryptoAmount,
                     currencySymbol: trade.currencySymbol,
                     buyerName: trade.buyerName,
+                    buyerAvatar: trade.buyerAvatar,
                     createdAt: trade.createdAt,
                   ),
           ),
         );
-        if (r == true) _refreshTrades();
+        if (r == true || r == null) _silentRefreshTrades();
       },
       child: Container(
         padding: const EdgeInsets.symmetric(
@@ -940,11 +1120,32 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> {
                       shape: BoxShape.circle,
                       color: Color(0xFF1E1E1E)),
                   alignment: Alignment.center,
-                  child: Text(initials,
-                      style: AppTheme.inter(
-                          color: Colors.white70,
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold)),
+                  child: _isOrdersBuyTab
+                      ? Text(initials,
+                          style: AppTheme.inter(
+                              color: Colors.white70,
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold))
+                      : (trade.buyerAvatar != null && trade.buyerAvatar!.isNotEmpty
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(18),
+                              child: Image.network(
+                                trade.buyerAvatar!,
+                                width: 36,
+                                height: 36,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => Text(initials,
+                                    style: AppTheme.inter(
+                                        color: Colors.white70,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.bold)),
+                              ),
+                            )
+                          : Text(initials,
+                              style: AppTheme.inter(
+                                  color: Colors.white70,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold))),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -996,6 +1197,7 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> {
                       ],
                     ),
                     const SizedBox(height: 6),
+                    if (_isOrdersBuyTab)
                     Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8, vertical: 3),
@@ -1014,23 +1216,83 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> {
               ],
             ),
             const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                    'Fiat  ₦${_formatNumber(trade.fiatAmount)}',
-                    style: AppTheme.inter(
-                        color: Colors.white70, fontSize: 12)),
-                Text(
-                    _formatCrypto(
-                        trade.cryptoAmount,
-                        trade.currencySymbol),
-                    style: AppTheme.inter(
-                        color: Colors.white70, fontSize: 12)),
-              ],
-            ),
-            if (trade.bankName != null ||
-                trade.bankAccountNumber != null) ...[
+            if (_isOrdersBuyTab) ...[
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  if (trade.bankName != null)
+                    Text(
+                      trade.bankName!,
+                      style: AppTheme.inter(
+                          color: Colors.white38, fontSize: 11),
+                    )
+                  else
+                    Text(
+                        'Fiat  ₦${_formatNumber(trade.fiatAmount)}',
+                        style: AppTheme.inter(
+                            color: Colors.white70, fontSize: 12)),
+                  Text(
+                      _formatCrypto(
+                          trade.cryptoAmount,
+                          trade.currencySymbol),
+                      style: AppTheme.inter(
+                          color: Colors.white70, fontSize: 12)),
+                ],
+              ),
+            ],
+            if (showSellAction) ...[
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  if (trade.bankName != null)
+                    Expanded(
+                      child: Text(
+                        trade.bankName!,
+                        style: AppTheme.inter(
+                            color: Colors.white38,
+                            fontSize: 11),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  GestureDetector(
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => P2PSellerReleaseScreen(
+                          tradeId: trade.id,
+                          fiatAmount: trade.fiatAmount,
+                          cryptoAmount: trade.cryptoAmount,
+                          currencySymbol: trade.currencySymbol,
+                          buyerName: trade.buyerName,
+                          buyerAvatar: trade.buyerAvatar,
+                          createdAt: trade.createdAt,
+                        ),
+                      ),
+                    ),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 24, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.redAccent,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        'Sell',
+                        textAlign: TextAlign.center,
+                        style: AppTheme.inter(
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+            if (!_isOrdersBuyTab && (trade.bankName == null)) const SizedBox(height: 4),
+            if (_isOrdersBuyTab && (trade.bankName != null ||
+                trade.bankAccountNumber != null)) ...[
               const SizedBox(height: 10),
               Container(
                 padding: const EdgeInsets.symmetric(
@@ -1068,22 +1330,24 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> {
                 ]),
               ),
             ],
-            const SizedBox(height: 10),
-            Row(
-              mainAxisAlignment:
-                  MainAxisAlignment.spaceBetween,
-              children: [
-                Text('Order #${trade.id}',
-                    style: AppTheme.inter(
-                        color: Colors.white38,
-                        fontSize: 11)),
-                if (trade.createdAt != null)
-                  Text(_fmtDate(trade.createdAt!),
+            if (_isOrdersBuyTab) ...[
+              const SizedBox(height: 10),
+              Row(
+                mainAxisAlignment:
+                    MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Order #${trade.id}',
                       style: AppTheme.inter(
                           color: Colors.white38,
                           fontSize: 11)),
-              ],
-            ),
+                  if (trade.createdAt != null)
+                    Text(_fmtDate(trade.createdAt!),
+                        style: AppTheme.inter(
+                            color: Colors.white38,
+                            fontSize: 11)),
+                ],
+              ),
+            ],
           ],
         ),
       ),

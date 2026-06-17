@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
+import '../../services/api_service.dart';
 
 class P2PUserHeader extends StatelessWidget {
   final String name;
@@ -24,27 +25,41 @@ class P2PUserHeader extends StatelessWidget {
     final content = Row(
       children: [
         ClipOval(
-          child: Image.asset(
-            'assets/icons/Avatar.png',
-            width: 40,
-            height: 40,
-            fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) {
-              return Container(
-                width: 40,
-                height: 40,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Color(0xFF1E1E1E),
+          child: avatarUrl != null && avatarUrl!.isNotEmpty
+              ? Image.network(
+                  ApiService.resolveUrl(avatarUrl!) ?? avatarUrl!,
+                  width: 40,
+                  height: 40,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      width: 40,
+                      height: 40,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Color(0xFF1E1E1E),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        name.substring(0, 2).toUpperCase(),
+                        style: AppTheme.inter(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.bold),
+                      ),
+                    );
+                  },
+                )
+              : Container(
+                  width: 40,
+                  height: 40,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Color(0xFF1E1E1E),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    name.substring(0, 2).toUpperCase(),
+                    style: AppTheme.inter(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.bold),
+                  ),
                 ),
-                alignment: Alignment.center,
-                child: Text(
-                  name.substring(0, 2).toUpperCase(),
-                  style: AppTheme.inter(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.bold),
-                ),
-              );
-            },
-          ),
         ),
         const SizedBox(width: 12),
         Expanded(

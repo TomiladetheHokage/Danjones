@@ -17,6 +17,8 @@ class P2POrderReviewScreen extends StatefulWidget {
   final double pricePerUnit;
   final String currencySymbol;
   final String sellerName;
+  final String? sellerAvatar;
+  final DateTime? createdAt;
 
   const P2POrderReviewScreen({
     super.key,
@@ -26,6 +28,8 @@ class P2POrderReviewScreen extends StatefulWidget {
     required this.pricePerUnit,
     required this.currencySymbol,
     required this.sellerName,
+    this.sellerAvatar,
+    this.createdAt,
   });
 
   @override
@@ -206,10 +210,21 @@ class _P2POrderReviewScreenState extends State<P2POrderReviewScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 TextButton(
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const P2PAppealScreen(isBuyer: true)),
-                  ),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => P2PAppealScreen(
+                            isBuyer: true,
+                            tradeId: widget.tradeId,
+                            fiatAmount: widget.fiatAmount,
+                            counterpartyName: widget.sellerName,
+                            counterpartyAvatar: widget.sellerAvatar,
+                            currencySymbol: widget.currencySymbol,
+                          ),
+                        ),
+                      );
+                    },
                   child: Text(
                     'Appeal',
                     style: AppTheme.inter(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
@@ -218,7 +233,18 @@ class _P2POrderReviewScreenState extends State<P2POrderReviewScreen> {
                 TextButton.icon(
                   onPressed: () => Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const P2PChatScreen()),
+                    MaterialPageRoute(
+                      builder: (_) => P2PChatScreen(
+                        tradeId: widget.tradeId,
+                        fiatAmount: widget.fiatAmount,
+                        cryptoAmount: widget.cryptoAmount,
+                        currencySymbol: widget.currencySymbol,
+                        counterpartyName: widget.sellerName,
+                        counterpartyAvatar: widget.sellerAvatar,
+                        isBuyer: true,
+                        createdAt: widget.createdAt,
+                      ),
+                    ),
                   ),
                   icon: Image.asset(
                     'assets/icons/message.png',

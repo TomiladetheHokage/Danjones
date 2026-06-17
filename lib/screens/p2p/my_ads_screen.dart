@@ -29,7 +29,9 @@ class _MyAdsScreenState extends State<MyAdsScreen> {
     return allAds;
   }
 
-  void _refresh() => setState(() => _adsFuture = _fetchMyAds());
+  void _refresh() => setState(() {
+        _adsFuture = _fetchMyAds();
+      });
 
   Future<void> _closeAd(P2PAd ad) async {
     final confirm = await showDialog<bool>(
@@ -170,7 +172,7 @@ class _MyAdsScreenState extends State<MyAdsScreen> {
 
   Widget _buildAdCard(P2PAd ad) {
     final isBuy = ad.type.toLowerCase() == 'buy';
-    final typeColor = isBuy ? const Color(0xFF33D17A) : const Color(0xFFFF6B6B);
+    final typeColor = isBuy ? const Color(0xFFE4B53E) : const Color(0xFFFF6B6B);
     final isClosing = _closingIds.contains(ad.id);
 
     return Container(
@@ -213,14 +215,14 @@ class _MyAdsScreenState extends State<MyAdsScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
                   color: ad.isActive
-                      ? const Color(0xFF33D17A).withValues(alpha: 0.12)
+                      ? const Color(0xFFE4B53E).withValues(alpha: 0.12)
                       : Colors.white.withValues(alpha: 0.06),
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(
                   ad.isActive ? 'Active' : 'Closed',
                   style: AppTheme.inter(
-                    color: ad.isActive ? const Color(0xFF33D17A) : Colors.white38,
+                    color: ad.isActive ? const Color(0xFFE4B53E) : Colors.white38,
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
                   ),

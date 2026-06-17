@@ -380,16 +380,34 @@ class ApiService {
   }
 
   static Future<List<P2PAd>> getP2pAds() async {
-    final response = await _makeRequest(
-      () => http.get(
-        Uri.parse('$baseUrl/p2p/ads'),
+    final now = DateTime.now().millisecondsSinceEpoch.toString();
+    final primaryBase = (kIsWeb && kDebugMode) ? liveUrl : baseUrl;
+    final fallbackBase = (kIsWeb && kDebugMode) ? localUrl : liveUrl;
+
+    Future<http.Response> fetch(String base) {
+      return http.get(
+        Uri.parse('$base/p2p/ads?t=$now'),
         headers: {
           'Accept': 'application/json',
           'Authorization': 'Bearer $authToken',
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache',
         },
-      ),
-      requestName: 'GET_P2P_ADS',
-    );
+      );
+    }
+
+    http.Response response;
+    try {
+      response = await _makeRequest(
+        () => fetch(primaryBase),
+        requestName: 'GET_P2P_ADS',
+      );
+    } catch (_) {
+      response = await _makeRequest(
+        () => fetch(fallbackBase),
+        requestName: 'GET_P2P_ADS_FALLBACK',
+      );
+    }
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       final data = jsonDecode(response.body);
@@ -402,7 +420,10 @@ class ApiService {
 
   static Future<List<P2PTrade>> getMyP2pTrades() async {
     final now = DateTime.now().millisecondsSinceEpoch.toString();
-    final primaryUri = Uri.parse('$baseUrl/p2p/my-trades').replace(
+    final primaryBase = (kIsWeb && kDebugMode) ? liveUrl : baseUrl;
+    final fallbackBase = (kIsWeb && kDebugMode) ? localUrl : liveUrl;
+
+    final primaryUri = Uri.parse('$primaryBase/p2p/my-trades').replace(
       queryParameters: {'t': now},
     );
 
@@ -425,11 +446,9 @@ class ApiService {
         requestName: 'GET_MY_P2P_TRADES',
       );
     } catch (_) {
-      // Web debug often uses a local proxy that may not always be running.
-      // If that fails, retry directly against live API.
-      if (baseUrl == liveUrl) rethrow;
-
-      final fallbackUri = Uri.parse('$liveUrl/p2p/my-trades').replace(
+      // Web debug may use a localhost proxy that is not always available.
+      // Retry against the alternate base URL.
+      final fallbackUri = Uri.parse('$fallbackBase/p2p/my-trades').replace(
         queryParameters: {'t': now},
       );
       response = await _makeRequest(
@@ -552,6 +571,34 @@ class ApiService {
     final data = jsonDecode(response.body);
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return data;
+    } else {
+      final errMsg = data['message'] ?? data['error'] ?? 'Server error (${response.statusCode})';
+      throw Exception(errMsg);
+    }
+  }
+
+  static Future<Map<String, dynamic>> submitP2pDispute({
+    required int tradeId,
+    required String reason,
+  }) async {
+    final response = await _makeRequest(
+      () => http.post(
+        Uri.parse('$baseUrl/p2p/trades/$tradeId/dispute'),
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $authToken',
+        },
+        body: jsonEncode({
+          'reason': reason,
+        }),
+      ),
+      requestName: 'SUBMIT_P2P_DISPUTE',
+    );
+
+    final data = jsonDecode(response.body);
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return data as Map<String, dynamic>;
     } else {
       final errMsg = data['message'] ?? data['error'] ?? 'Server error (${response.statusCode})';
       throw Exception(errMsg);
@@ -831,6 +878,30 @@ class ApiService {
     }
   }
 
+  /// Delete a saved bank account.
+  static Future<void> deleteBankAccount({
+    required int bankAccountId,
+  }) async {
+    final response = await _makeRequest(
+      () => http.get(
+        Uri.parse('$baseUrl/bank-accounts/delete/$bankAccountId'),
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $authToken',
+        },
+      ),
+      requestName: 'GET_DELETE_BANK_ACCOUNT',
+    );
+
+    final data = jsonDecode(response.body);
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return;
+    } else {
+      final errMsg = data['message'] ?? data['error'] ?? 'Failed to delete account (${response.statusCode})';
+      throw Exception(errMsg);
+    }
+  }
+
   static Future<Map<String, dynamic>> forgotPassword({
     required String email,
   }) async {
@@ -844,6 +915,34 @@ class ApiService {
         return await http.Response.fromStream(streamedResponse);
       },
       requestName: 'FORGOT_PASSWORD',
+    );
+
+    final data = jsonDecode(response.body);
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return data as Map<String, dynamic>;
+    } else {
+      final errMsg = data['message'] ?? data['error'] ?? 'Server error (${response.statusCode})';
+      throw Exception(errMsg);
+    }
+  }
+
+  static Future<Map<String, dynamic>> resetPassword({
+    required String email,
+    required String otp,
+    required String password,
+  }) async {
+    final response = await _makeRequest(
+      () async {
+        var request = http.MultipartRequest('POST', Uri.parse('$baseUrl/reset-password'))
+          ..headers['Accept'] = 'application/json'
+          ..fields['email'] = email
+          ..fields['otp'] = otp
+          ..fields['password'] = password;
+
+        final streamedResponse = await request.send();
+        return await http.Response.fromStream(streamedResponse);
+      },
+      requestName: 'RESET_PASSWORD',
     );
 
     final data = jsonDecode(response.body);
@@ -886,5 +985,31 @@ class ApiService {
 
     final dynamic message = data['message'];
     throw Exception(message is String ? message : 'An error occurred during verification. Please try again later.');
+  }
+
+  static Future<void> deleteAccount({
+    required String email,
+    required String password,
+  }) async {
+    final response = await _makeRequest(
+      () async {
+        var request = http.MultipartRequest('POST', Uri.parse('$baseUrl/delete-account'))
+          ..headers['Accept'] = 'application/json'
+          ..fields['email'] = email
+          ..fields['password'] = password;
+
+        final streamedResponse = await request.send();
+        return await http.Response.fromStream(streamedResponse);
+      },
+      requestName: 'DELETE_ACCOUNT',
+    );
+
+    final data = jsonDecode(response.body);
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return;
+    } else {
+      final errMsg = data['message'] ?? data['error'] ?? 'Failed to delete account (${response.statusCode})';
+      throw Exception(errMsg);
+    }
   }
 }
