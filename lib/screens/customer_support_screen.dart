@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
+import 'security_settings_screen.dart';
+import 'trade_screen.dart';
+import 'kyc/verification_center_screen.dart';
+import 'deposit_screen.dart';
 
 class CustomerSupportScreen extends StatefulWidget {
   const CustomerSupportScreen({super.key});
@@ -110,10 +114,46 @@ class _CustomerSupportScreenState extends State<CustomerSupportScreen> {
               childAspectRatio: 1.6,
               children: [
                 // _buildCategoryCard(Icons.flag_outlined, 'Getting Started'),
-                _buildCategoryCard(Icons.person_outline, 'Account Verification'),
-                _buildCategoryCard(Icons.account_balance_wallet_outlined, 'Deposits & Withdrawals'),
-                _buildCategoryCard(Icons.sync_alt_outlined, 'P2P Trading'),
-                _buildCategoryCard(Icons.security_outlined, 'Security'),
+                _buildCategoryCard(
+                  Icons.person_outline,
+                  'Account Verification',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const VerificationCenterScreen()),
+                    );
+                  },
+                ),
+                _buildCategoryCard(
+                  Icons.account_balance_wallet_outlined,
+                  'Deposits & Withdrawals',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const DepositScreen()),
+                    );
+                  },
+                ),
+                _buildCategoryCard(
+                  Icons.sync_alt_outlined,
+                  'P2P Trading',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const TradeScreen()),
+                    );
+                  },
+                ),
+                _buildCategoryCard(
+                  Icons.security_outlined,
+                  'Security',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const SecuritySettingsScreen()),
+                    );
+                  },
+                ),
                 // _buildCategoryCard(Icons.bar_chart_outlined, 'Spot Trading'),
               ],
             ),
@@ -198,30 +238,33 @@ class _CustomerSupportScreenState extends State<CustomerSupportScreen> {
     );
   }
 
-  Widget _buildCategoryCard(IconData icon, String title) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1C1D21),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.05)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.language, color: const Color(0xFFE4B53E), size: 24),
-          const SizedBox(height: 12),
-          Text(
-            title,
-            style: AppTheme.inter(
-              color: Colors.white,
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              height: 1.2,
+  Widget _buildCategoryCard(IconData icon, String title, {required VoidCallback onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1C1D21),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.white.withOpacity(0.05)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: const Color(0xFFE4B53E), size: 24),
+            const SizedBox(height: 12),
+            Text(
+              title,
+              style: AppTheme.inter(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                height: 1.2,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

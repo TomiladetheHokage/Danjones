@@ -554,6 +554,103 @@ class ApiService {
     }
   }
 
+  static Future<void> verifyTransactionPin({required String pin}) async {
+    final response = await _makeRequest(
+      () async {
+        final request = http.MultipartRequest(
+          'POST',
+          Uri.parse('$baseUrl/verify-transaction-pin'),
+        )
+          ..headers['Accept'] = 'application/json'
+          ..headers['Authorization'] = 'Bearer $authToken'
+          ..fields['pin'] = pin;
+
+        final streamed = await request.send();
+        return http.Response.fromStream(streamed);
+      },
+      requestName: 'VERIFY_TRANSACTION_PIN',
+    );
+
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+
+    if (response.statusCode >= 200 && response.statusCode < 300 && data['success'] != false) {
+      return; // verified
+    }
+    final errMsg = (data['errors']?['pin'] as List?)?.first?.toString()
+        ?? data['message']?.toString()
+        ?? 'Incorrect PIN.';
+    throw Exception(errMsg);
+  }
+
+  static Future<void> setTransactionPin({
+    required String pin,
+    required String pinConfirmation,
+  }) async {
+    final response = await _makeRequest(
+      () async {
+        final request = http.MultipartRequest(
+          'POST',
+          Uri.parse('$baseUrl/transaction-pin'),
+        )
+          ..headers['Accept'] = 'application/json'
+          ..headers['Authorization'] = 'Bearer $authToken'
+          ..fields['pin'] = pin
+          ..fields['pin_confirmation'] = pinConfirmation;
+
+        final streamed = await request.send();
+        return http.Response.fromStream(streamed);
+      },
+      requestName: 'SET_TRANSACTION_PIN',
+    );
+
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    if (response.statusCode >= 200 && response.statusCode < 300 && data['success'] != false) {
+      return;
+    }
+
+    final errMsg = (data['errors']?['pin'] as List?)?.first?.toString()
+        ?? (data['errors']?['pin_confirmation'] as List?)?.first?.toString()
+        ?? data['message']?.toString()
+        ?? 'Failed to set transaction PIN.';
+    throw Exception(errMsg);
+  }
+
+  static Future<void> updateTransactionPin({
+    required String pin,
+    required String pinConfirmation,
+    required String currentPassword,
+  }) async {
+    final response = await _makeRequest(
+      () async {
+        final request = http.MultipartRequest(
+          'POST',
+          Uri.parse('$baseUrl/update-transaction-pin'),
+        )
+          ..headers['Accept'] = 'application/json'
+          ..headers['Authorization'] = 'Bearer $authToken'
+          ..fields['pin'] = pin
+          ..fields['pin_confirmation'] = pinConfirmation
+          ..fields['current_password'] = currentPassword;
+
+        final streamed = await request.send();
+        return http.Response.fromStream(streamed);
+      },
+      requestName: 'UPDATE_TRANSACTION_PIN',
+    );
+
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    if (response.statusCode >= 200 && response.statusCode < 300 && data['success'] != false) {
+      return;
+    }
+
+    final errMsg = (data['errors']?['pin'] as List?)?.first?.toString()
+        ?? (data['errors']?['pin_confirmation'] as List?)?.first?.toString()
+        ?? (data['errors']?['current_password'] as List?)?.first?.toString()
+        ?? data['message']?.toString()
+        ?? 'Failed to update transaction PIN.';
+    throw Exception(errMsg);
+  }
+
   static Future<Map<String, dynamic>> completeP2pTrade({
     required int tradeId,
   }) async {
@@ -988,14 +1085,13 @@ class ApiService {
   }
 
   static Future<void> deleteAccount({
-    required String email,
     required String password,
   }) async {
     final response = await _makeRequest(
       () async {
-        var request = http.MultipartRequest('POST', Uri.parse('$baseUrl/delete-account'))
+        var request = http.MultipartRequest('DELETE', Uri.parse('$baseUrl/delete-account'))
           ..headers['Accept'] = 'application/json'
-          ..fields['email'] = email
+          ..headers['Authorization'] = 'Bearer $authToken'
           ..fields['password'] = password;
 
         final streamedResponse = await request.send();

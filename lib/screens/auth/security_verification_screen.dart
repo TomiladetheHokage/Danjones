@@ -7,7 +7,7 @@ import 'package:http/http.dart' as http;
 
 import '../../services/api_service.dart';
 import '../../widgets/custom_dialog.dart';
-import 'login_screen.dart';
+import 'create_pin_screen.dart';
 
 /// Two-state email verification screen.
 ///
@@ -316,10 +316,10 @@ class _SecurityVerificationScreenState
       context,
       title: 'Email Verified',
       message: 'Your email has been verified successfully.',
-      buttonText: 'Continue to Login',
+      buttonText: 'Set Transaction PIN',
       onButtonPressed: () {
         Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const LoginScreen()),
+          MaterialPageRoute(builder: (_) => const CreatePinScreen()),
           (route) => false,
         );
       },

@@ -39,7 +39,7 @@ class P2POrderCompletedScreen extends StatelessWidget {
     final symbol = (currencySymbol == null || currencySymbol!.isEmpty) ? 'USDT' : currencySymbol!;
     final tradeFiatAmount = fiatAmount ?? 125000;
     final tradeCryptoAmount = cryptoAmount ?? 100;
-    final tradePrice = pricePerUnit ?? 1250;
+    final tradePrice = pricePerUnit ?? (tradeCryptoAmount > 0 ? tradeFiatAmount / tradeCryptoAmount : 0);
     final tradeSeller = (sellerName == null || sellerName!.isEmpty) ? 'CryptoKing_NG' : sellerName!;
     final orderNumber = tradeId?.toString() ?? '29384920';
 
@@ -61,23 +61,11 @@ class P2POrderCompletedScreen extends StatelessWidget {
         child: Column(
           children: [
             const SizedBox(height: 24),
-            Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: const Color(0xFFE4B53E).withOpacity(0.2),
-              ),
-              alignment: Alignment.center,
-              child: Container(
-                width: 56,
-                height: 56,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Color(0xFFE4B53E),
-                ),
-                child: const Icon(Icons.check, color: Colors.black, size: 36),
-              ),
+            Image.asset(
+              'assets/icons/tick-circle.png',
+              width: 92,
+              height: 92,
+              fit: BoxFit.contain,
             ),
             const SizedBox(height: 24),
             
@@ -97,38 +85,38 @@ class P2POrderCompletedScreen extends StatelessWidget {
             P2PInfoRow(label: 'Order No', value: '#$orderNumber'),
             const SizedBox(height: 48),
             
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: const Color(0xFF151515),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('How was your trading\nexperience?', style: AppTheme.inter(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600, height: 1.4)),
-                      const SizedBox(height: 4),
-                      Text('Your feedback helps us improve', style: AppTheme.inter(color: Colors.white54, fontSize: 11)),
-                    ],
-                  ),
-                  Row(
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.thumb_up_alt_outlined, color: Colors.white54, size: 24),
-                        onPressed: () {},
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.thumb_down_alt_outlined, color: Colors.white54, size: 24),
-                        onPressed: () {},
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
+            // Container(
+            //   padding: const EdgeInsets.all(20),
+            //   decoration: BoxDecoration(
+            //     color: const Color(0xFF151515),
+            //     borderRadius: BorderRadius.circular(16),
+            //   ),
+            //   child: Row(
+            //     mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            //     children: [
+            //       Column(
+            //         crossAxisAlignment: CrossAxisAlignment.start,
+            //         children: [
+            //           Text('How was your trading\nexperience?', style: AppTheme.inter(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600, height: 1.4)),
+            //           const SizedBox(height: 4),
+            //           Text('Your feedback helps us improve', style: AppTheme.inter(color: Colors.white54, fontSize: 11)),
+            //         ],
+            //       ),
+            //       Row(
+            //         children: [
+            //           IconButton(
+            //             icon: const Icon(Icons.thumb_up_alt_outlined, color: Colors.white54, size: 24),
+            //             onPressed: () {},
+            //           ),
+            //           IconButton(
+            //             icon: const Icon(Icons.thumb_down_alt_outlined, color: Colors.white54, size: 24),
+            //             onPressed: () {},
+            //           ),
+            //         ],
+            //       ),
+            //     ],
+            //   ),
+            // ),
             
             const SizedBox(height: 64),
             

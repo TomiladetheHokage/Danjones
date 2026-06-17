@@ -4,6 +4,7 @@ import '../services/api_service.dart';
 import 'legal/terms_screen.dart';
 import 'legal/privacy_policy_screen.dart';
 import 'legal/data_usage_policy_screen.dart';
+import 'security_settings_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -87,9 +88,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _showDeleteAccountDialog() {
-    final emailController = TextEditingController();
     final passwordController = TextEditingController();
-    final confirmController = TextEditingController();
     bool showPassword = false;
 
     showModalBottomSheet(
@@ -152,27 +151,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                       const SizedBox(height: 24),
                       TextField(
-                        controller: emailController,
-                        style: AppTheme.inter(color: Colors.white),
-                        decoration: InputDecoration(
-                          hintText: 'Email',
-                          hintStyle: AppTheme.inter(color: Colors.white38),
-                          filled: true,
-                          fillColor: const Color(0xFF151515),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
                         controller: passwordController,
+                        onChanged: (_) => setState(() {}),
                         obscureText: !showPassword,
                         style: AppTheme.inter(color: Colors.white),
                         decoration: InputDecoration(
@@ -199,36 +179,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                       ),
                       const SizedBox(height: 12),
-                      TextField(
-                        controller: confirmController,
-                        style: AppTheme.inter(color: Colors.white),
-                        decoration: InputDecoration(
-                          hintText: 'Type "delete" to confirm',
-                          hintStyle: AppTheme.inter(color: Colors.white38),
-                          filled: true,
-                          fillColor: const Color(0xFF151515),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                        ),
-                      ),
                       const SizedBox(height: 24),
                       SizedBox(
                         width: double.infinity,
                         height: 48,
                         child: ElevatedButton(
-                          onPressed: (confirmController.text.toLowerCase() == 'delete' &&
-                                  emailController.text.isNotEmpty &&
-                                  passwordController.text.isNotEmpty &&
+                          onPressed: (passwordController.text.isNotEmpty &&
                                   !_isDeletingAccount)
                               ? () => _performDeleteAccount(
-                                    emailController.text,
                                     passwordController.text,
                                   )
                               : null,
@@ -287,10 +245,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Future<void> _performDeleteAccount(String email, String password) async {
+  Future<void> _performDeleteAccount(String password) async {
     setState(() => _isDeletingAccount = true);
     try {
-      await ApiService.deleteAccount(email: email, password: password);
+      await ApiService.deleteAccount(password: password);
       if (!mounted) return;
       Navigator.pop(context);
       _showSuccessPopup();
@@ -602,6 +560,46 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
 
             const SizedBox(height: 24),
+            _buildSectionTitle('Security'),
+            GestureDetector(
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const SecuritySettingsScreen()),
+              ),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1C1D21),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.white.withOpacity(0.05)),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
+                  child: Row(
+                    children: [
+                      Icon(Icons.security_outlined, color: const Color(0xFFE4B53E), size: 18),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'Manage Security',
+                          style: AppTheme.inter(
+                            color: Colors.white,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                      Icon(
+                        Icons.arrow_forward_ios,
+                        color: Colors.white.withOpacity(0.2),
+                        size: 14,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 24),
             _buildSectionTitle('Account'),
             GestureDetector(
               onTap: _showDeleteAccountDialog,
@@ -755,36 +753,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
               fontWeight: FontWeight.w500,
             ),
           ),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Coming soon badge
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE4B53E).withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  'Coming Soon',
-                  style: AppTheme.inter(
-                    color: const Color(0xFFE4B53E),
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              // Disabled switch (greyed out, non-interactive)
-              Switch(
-                value: false,
-                onChanged: null,
-                activeColor: Colors.black,
-                activeTrackColor: const Color(0xFFE4B53E),
-                inactiveTrackColor: Colors.white.withOpacity(0.08),
-                inactiveThumbColor: Colors.white24,
-              ),
-            ],
+          // Disabled switch (greyed out, non-interactive)
+          Switch(
+            value: false,
+            onChanged: null,
+            activeColor: Colors.black,
+            activeTrackColor: const Color(0xFFE4B53E),
+            inactiveTrackColor: Colors.white.withOpacity(0.08),
+            inactiveThumbColor: Colors.white24,
           ),
         ],
       ),

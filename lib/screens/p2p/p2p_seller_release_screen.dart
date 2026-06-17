@@ -6,6 +6,7 @@ import '../../widgets/p2p/p2p_warning_box.dart';
 import '../../widgets/p2p/p2p_big_timer.dart';
 import 'p2p_appeal_screen.dart';
 import 'p2p_chat_screen.dart';
+import 'p2p_order_completed_screen.dart';
 
 class P2PSellerReleaseScreen extends StatefulWidget {
   final int tradeId;
@@ -37,15 +38,59 @@ class P2PSellerReleaseScreen extends StatefulWidget {
 class _P2PSellerReleaseScreenState extends State<P2PSellerReleaseScreen> {
   bool _isReleasing = false;
   bool _bankConfirmed = false;
+  bool? _isPinVerified = false;
 
   Future<void> _confirmRelease() async {
+    if (_isPinVerified == true) {
+      await _releaseCrypto();
+      return;
+    }
+
+    // Show PIN modal first; release only happens after a second explicit tap.
+    _showPinModal();
+  }
+
+  Future<void> _showPinModal() async {
+    final verified = await showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      barrierColor: Colors.black.withOpacity(0.7),
+      builder: (_) => _PinReleaseSheet(
+        onPinVerified: (pin) async {
+          // 1. Verify PIN
+          await ApiService.verifyTransactionPin(pin: pin);
+        },
+        onPinVerifiedSuccess: () async {},
+        onRelease: () async {},
+        onSuccess: () {},
+        onVerified: () {},
+      ),
+    );
+
+    if (!mounted) return;
+    if (verified == true) {
+      setState(() => _isPinVerified = true);
+    }
+  }
+
+  Future<void> _releaseCrypto() async {
     setState(() => _isReleasing = true);
     try {
       await ApiService.completeP2pTrade(tradeId: widget.tradeId);
       if (!mounted) return;
-      await _showComingSoonPopup('Crypto released successfully');
-      if (!mounted) return;
-      Navigator.pop(context, true);
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => P2POrderCompletedScreen(
+            tradeId: widget.tradeId,
+            fiatAmount: widget.fiatAmount,
+            cryptoAmount: widget.cryptoAmount,
+            currencySymbol: widget.currencySymbol,
+            sellerName: widget.buyerName,
+          ),
+        ),
+      );
     } catch (e) {
       if (!mounted) return;
       _showErrorPopup(e.toString().replaceAll('Exception: ', ''));
@@ -92,73 +137,6 @@ class _P2PSellerReleaseScreenState extends State<P2PSellerReleaseScreen> {
                     children: [
                       Text(
                         'Release Failed',
-                        style: AppTheme.inter(
-                          color: Colors.white,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        message,
-                        style: AppTheme.inter(
-                          color: Colors.white54,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                GestureDetector(
-                  onTap: () => Navigator.pop(context),
-                  child: const Icon(Icons.close, color: Colors.white54),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Future<void> _showComingSoonPopup(String message) {
-    return showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      barrierColor: Colors.black.withOpacity(0.6),
-      builder: (_) {
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: const Color(0xFF1C1D21),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.white.withOpacity(0.05)),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE4B53E).withOpacity(0.15),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.rocket_launch,
-                    color: Color(0xFFE4B53E),
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'Coming Soon',
                         style: AppTheme.inter(
                           color: Colors.white,
                           fontSize: 14,
@@ -395,8 +373,8 @@ class _P2PSellerReleaseScreenState extends State<P2PSellerReleaseScreen> {
 
             _buildPrimaryButton(
               context,
-              _isReleasing ? 'Releasing...' : 'Confirm Release',
-              (_isReleasing || !_bankConfirmed) ? null : _confirmRelease,
+              _isReleasing ? 'Processing...' : ((_isPinVerified == true) ? 'Release Crypto' : 'Input PIN'),
+              (!_isReleasing && _bankConfirmed) ? _confirmRelease : null,
               hasArrow: !_isReleasing,
             ),
             const SizedBox(height: 16),
@@ -609,6 +587,212 @@ class _P2PSellerReleaseScreenState extends State<P2PSellerReleaseScreen> {
             fontSize: 16,
             color: isFilled ? Colors.black : const Color(0xFFE4B53E),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── PIN Release Sheet ────────────────────────────────────────────────────────
+class _PinReleaseSheet extends StatefulWidget {
+  final Future<void> Function(String pin) onPinVerified;
+  final Future<void> Function() onPinVerifiedSuccess;
+  final Future<void> Function() onRelease;
+  final VoidCallback onSuccess;
+  final VoidCallback onVerified;
+
+  const _PinReleaseSheet({
+    required this.onPinVerified,
+    required this.onPinVerifiedSuccess,
+    required this.onRelease,
+    required this.onSuccess,
+    required this.onVerified,
+  });
+
+  @override
+  State<_PinReleaseSheet> createState() => _PinReleaseSheetState();
+}
+
+class _PinReleaseSheetState extends State<_PinReleaseSheet> {
+  String _pin = '';
+  bool _isLoading = false;
+  String? _error;
+
+  void _onKey(String key) {
+    if (_isLoading) return;
+    setState(() {
+      _error = null;
+      if (key == '←') {
+        if (_pin.isNotEmpty) _pin = _pin.substring(0, _pin.length - 1);
+      } else if (_pin.length < 4) {
+        _pin += key;
+      }
+    });
+  }
+
+  Future<void> _verifyPin() async {
+    if (_pin.length < 4 || _isLoading) return;
+    setState(() { _isLoading = true; _error = null; });
+    try {
+      await widget.onPinVerified(_pin);
+      if (!mounted) return;
+      Navigator.pop(context, true);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString().replaceAll('Exception: ', '');
+        _pin = '';
+      });
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Widget _buildPinBox(int index) {
+    final filled = index < _pin.length;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 150),
+      width: 52,
+      height: 52,
+      decoration: BoxDecoration(
+        color: const Color(0xFF1C1D21),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: filled ? const Color(0xFFE4B53E) : Colors.white.withOpacity(0.15),
+          width: filled ? 1.5 : 1,
+        ),
+      ),
+      alignment: Alignment.center,
+      child: filled
+          ? Text('✱', style: AppTheme.inter(color: Colors.white, fontSize: 20))
+          : index == _pin.length
+              ? Container(width: 2, height: 24, color: const Color(0xFFE4B53E))
+              : const SizedBox(),
+    );
+  }
+
+  Widget _buildKey(String label) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => _onKey(label),
+        child: Container(
+          height: 60,
+          alignment: Alignment.center,
+          child: label == '←'
+              ? const Icon(Icons.backspace_outlined, color: Colors.white, size: 22)
+              : Text(
+                  label,
+                  style: AppTheme.inter(
+                    color: Colors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      decoration: const BoxDecoration(
+        color: Color(0xFF0E0F11),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 12),
+            Container(
+              width: 40, height: 4,
+              decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Input PIN',
+              style: AppTheme.inter(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 28),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(4, (i) => Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                child: _buildPinBox(i),
+              )),
+            ),
+            if (_error != null) ...[
+              const SizedBox(height: 10),
+              Text(_error!, style: AppTheme.inter(color: Colors.redAccent, fontSize: 12)),
+            ],
+            const SizedBox(height: 6),
+            TextButton(
+              onPressed: () {},
+              child: Text('Forget PIN?', style: AppTheme.inter(color: Colors.white38, fontSize: 13)),
+            ),
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Column(
+                children: [
+                  Row(children: ['1', '2', '3'].map(_buildKey).toList()),
+                  Row(children: ['4', '5', '6'].map(_buildKey).toList()),
+                  Row(children: ['7', '8', '9'].map(_buildKey).toList()),
+                  Row(children: [
+                    const Expanded(child: SizedBox()),
+                    _buildKey('0'),
+                    _buildKey('←'),
+                  ]),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: GestureDetector(
+                onTap: _isLoading
+                    ? null
+                    : (_pin.length == 4 ? _verifyPin : null),
+                child: AnimatedOpacity(
+                  opacity: _isLoading ? 0.7 : _pin.length == 4 ? 1.0 : 0.45,
+                  duration: const Duration(milliseconds: 200),
+                  child: Container(
+                    width: double.infinity,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(30),
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFFF3C756), Color(0xFFB88A2D)],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                      ),
+                    ),
+                    alignment: Alignment.center,
+                    child: _isLoading
+                        ? const SizedBox(
+                            width: 22, height: 22,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.5,
+                              valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
+                            ),
+                          )
+                        : Text(
+                            'Input PIN',
+                            style: AppTheme.inter(
+                              color: Colors.black,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+          ],
         ),
       ),
     );

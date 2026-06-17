@@ -3,6 +3,7 @@ import '../theme/app_theme.dart';
 import 'edit_profile_screen.dart';
 import 'referral_screen.dart';
 import 'settings_screen.dart';
+import 'security_settings_screen.dart';
 import 'customer_support_screen.dart';
 import 'enable_2fa_scan_screen.dart';
 import 'auth/login_screen.dart';
@@ -279,14 +280,11 @@ const SizedBox(height: 30),
                   title: 'Security Center',
                   subtitle: '2FA, Password, Anti-Phishing',
                   onTap: () {
-                    _showComingSoon(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const SecuritySettingsScreen()),
+                    );
                   },
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _comingSoonBadge(),
-                    ],
-                  ),
                 ),
                 _buildMenuItem(
                   imagePath: 'assets/icons/history.png',
@@ -334,16 +332,12 @@ const SizedBox(height: 30),
                 _buildMenuItem(
                   imagePath: 'assets/icons/customer-support.png',
                   title: 'Customer Support',
-                  trailing: _comingSoonBadge(),
-               onTap: () {
-  _showComingSoon(context);
-
-  // TODO: enable later
-  Navigator.push(
-    context,
-    MaterialPageRoute(builder: (_) => const CustomerSupportScreen()),
-  );
-},
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const CustomerSupportScreen()),
+                    );
+                  },
                 ),
                 _buildMenuItem(
                   imagePath: 'assets/icons/settings.png',

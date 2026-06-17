@@ -149,6 +149,51 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> with WidgetsBinding
     _silentRefreshTrades(); // fetch fresh data without showing a spinner
   }
 
+  Future<void> _openSellConfirmOrder(P2PTrade trade) async {
+    try {
+      final ads = await ApiService.getP2pAds();
+      final ad = ads.firstWhere(
+        (a) => a.id == trade.advertisementId,
+        orElse: () => ads.isNotEmpty ? ads.first : throw Exception('Ad not found'),
+      );
+      if (!mounted) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => P2POrderConfirmationScreen(
+            ad: ad,
+            fiatAmount: trade.fiatAmount,
+            isSell: true,
+            sellTradeId: trade.id,
+            sellCryptoAmount: trade.cryptoAmount,
+            sellBuyerName: trade.buyerName,
+            sellBuyerAvatar: trade.buyerAvatar,
+            sellCreatedAt: trade.createdAt,
+            sellBankName: trade.bankName,
+          ),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      // Fallback: go directly to release screen
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => P2PSellerReleaseScreen(
+            tradeId: trade.id,
+            fiatAmount: trade.fiatAmount,
+            cryptoAmount: trade.cryptoAmount,
+            currencySymbol: trade.currencySymbol,
+            buyerName: trade.buyerName,
+            buyerAvatar: trade.buyerAvatar,
+            createdAt: trade.createdAt,
+            bankName: trade.bankName,
+          ),
+        ),
+      );
+    }
+  }
+
   List<P2PAd> _filterAds(List<P2PAd> all) {
     return all
         .where((ad) =>
@@ -565,6 +610,8 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> with WidgetsBinding
     );
   }
 
+
+
   // ════════════════════════════════════════════════
   //  MARKETPLACE TAB
   // ════════════════════════════════════════════════
@@ -621,7 +668,7 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> with WidgetsBinding
                           return _buildTradesError(snap.error.toString());
                         }
                         final trades =
-                          _filterTrades(rawList, isBuyTab: false);
+                            _filterTrades(rawList, isBuyTab: false);
                         if (trades.isEmpty) return _buildTradesEmpty();
                         return RefreshIndicator(
                           color: const Color(0xFFE4B53E),
@@ -916,7 +963,7 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> with WidgetsBinding
               GestureDetector(
                 onTap: () => isBuy
                     ? _showBuyAmountDialog(ad)
-                    : _callMyTradesEndpoint(),
+                    : _showSellAmountDialog(ad),
                 child: Container(
                   padding: const EdgeInsets.symmetric(
                       horizontal: 24, vertical: 8),
@@ -1098,20 +1145,14 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> with WidgetsBinding
 
     return GestureDetector(
       onTap: () async {
+        if (!buyTab) {
+          _openSellConfirmOrder(trade);
+          return;
+        }
         final r = await Navigator.push<bool>(
           context,
           MaterialPageRoute(
-            builder: (_) => buyTab
-                ? TradeDetailsScreen(trade: trade)
-                : P2PSellerReleaseScreen(
-                    tradeId: trade.id,
-                    fiatAmount: trade.fiatAmount,
-                    cryptoAmount: trade.cryptoAmount,
-                    currencySymbol: trade.currencySymbol,
-                    buyerName: trade.buyerName,
-                    buyerAvatar: trade.buyerAvatar,
-                    createdAt: trade.createdAt,
-                  ),
+            builder: (_) => TradeDetailsScreen(trade: trade),
           ),
         );
         if (r == true || r == null) _silentRefreshTrades();
@@ -1272,20 +1313,7 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> with WidgetsBinding
                       ),
                     ),
                   GestureDetector(
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => P2PSellerReleaseScreen(
-                          tradeId: trade.id,
-                          fiatAmount: trade.fiatAmount,
-                          cryptoAmount: trade.cryptoAmount,
-                          currencySymbol: trade.currencySymbol,
-                          buyerName: trade.buyerName,
-                          buyerAvatar: trade.buyerAvatar,
-                          createdAt: trade.createdAt,
-                        ),
-                      ),
-                    ),
+                    onTap: () => _openSellConfirmOrder(trade),
                     child: Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 24, vertical: 8),
