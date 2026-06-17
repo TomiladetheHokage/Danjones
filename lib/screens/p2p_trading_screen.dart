@@ -158,11 +158,11 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> with WidgetsBinding
         .toList();
   }
 
-  List<P2PTrade> _filterTrades(List<P2PTrade> all) {
+  List<P2PTrade> _filterTrades(List<P2PTrade> all, {required bool isBuyTab}) {
     final currentUserId = DataStore.instance.dashboard.value?.user?.id;
     if (currentUserId == null) return [];
 
-    if (_isOrdersBuyTab) {
+    if (isBuyTab) {
       return all.where((t) {
         final adType = t.adType.toLowerCase();
         if (adType.isNotEmpty) return adType != 'sell';
@@ -606,16 +606,22 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> with WidgetsBinding
                   : FutureBuilder<List<P2PTrade>>(
                       future: _tradesFuture,
                       builder: (ctx, snap) {
-                        if (snap.connectionState == ConnectionState.waiting) {
+                        final rawList = snap.data ?? _cachedTrades;
+                        final isFirstLoad =
+                            snap.connectionState == ConnectionState.waiting &&
+                                _cachedTrades.isEmpty;
+
+                        if (isFirstLoad) {
                           return const Center(
                             child: CircularProgressIndicator(
                                 color: Color(0xFFE4B53E), strokeWidth: 2),
                           );
                         }
-                        if (snap.hasError) {
+                        if (snap.hasError && _cachedTrades.isEmpty) {
                           return _buildTradesError(snap.error.toString());
                         }
-                        final trades = _filterTrades(snap.data ?? []);
+                        final trades =
+                          _filterTrades(rawList, isBuyTab: false);
                         if (trades.isEmpty) return _buildTradesEmpty();
                         return RefreshIndicator(
                           color: const Color(0xFFE4B53E),
@@ -631,6 +637,7 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> with WidgetsBinding
                             itemBuilder: (_, i) => _buildTradeCard(
                               trades[i],
                               showSellAction: true,
+                              isBuyTab: false,
                             ),
                           ),
                         );
@@ -1015,7 +1022,8 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> with WidgetsBinding
             if (snap.hasError && _cachedTrades.isEmpty) {
               return _buildTradesError(snap.error.toString());
             }
-            final trades = _filterTrades(rawList);
+            final trades =
+              _filterTrades(rawList, isBuyTab: _isOrdersBuyTab);
               final child = trades.isEmpty
                   ? _buildTradesEmpty()
                   : RefreshIndicator(
@@ -1029,8 +1037,10 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> with WidgetsBinding
                         itemCount: trades.length,
                         separatorBuilder: (_, __) =>
                             const SizedBox(height: 14),
-                        itemBuilder: (_, i) =>
-                            _buildTradeCard(trades[i]),
+                        itemBuilder: (_, i) => _buildTradeCard(
+                          trades[i],
+                          isBuyTab: _isOrdersBuyTab,
+                        ),
                       ),
                     );
               return AnimatedSwitcher(
@@ -1073,9 +1083,14 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> with WidgetsBinding
     );
   }
 
-  Widget _buildTradeCard(P2PTrade trade, {bool showSellAction = false}) {
+  Widget _buildTradeCard(
+    P2PTrade trade, {
+    bool showSellAction = false,
+    bool? isBuyTab,
+  }) {
+    final buyTab = isBuyTab ?? _isOrdersBuyTab;
     final counterparty =
-        _isOrdersBuyTab ? trade.sellerName : trade.buyerName;
+        buyTab ? trade.sellerName : trade.buyerName;
     final initials = counterparty.length >= 2
         ? counterparty.substring(0, 2).toUpperCase()
         : counterparty.toUpperCase();
@@ -1086,7 +1101,7 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> with WidgetsBinding
         final r = await Navigator.push<bool>(
           context,
           MaterialPageRoute(
-            builder: (_) => _isOrdersBuyTab
+            builder: (_) => buyTab
                 ? TradeDetailsScreen(trade: trade)
                 : P2PSellerReleaseScreen(
                     tradeId: trade.id,
@@ -1120,7 +1135,7 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> with WidgetsBinding
                       shape: BoxShape.circle,
                       color: Color(0xFF1E1E1E)),
                   alignment: Alignment.center,
-                  child: _isOrdersBuyTab
+                  child: buyTab
                       ? Text(initials,
                           style: AppTheme.inter(
                               color: Colors.white70,
@@ -1130,7 +1145,8 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> with WidgetsBinding
                           ? ClipRRect(
                               borderRadius: BorderRadius.circular(18),
                               child: Image.network(
-                                trade.buyerAvatar!,
+                          ApiService.resolveUrl(trade.buyerAvatar!) ??
+                            trade.buyerAvatar!,
                                 width: 36,
                                 height: 36,
                                 fit: BoxFit.cover,
@@ -1164,7 +1180,7 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> with WidgetsBinding
                       ]),
                       const SizedBox(height: 4),
                       Text(
-                          _isOrdersBuyTab ? 'Seller' : 'Buyer',
+                          buyTab ? 'Seller' : 'Buyer',
                           style: AppTheme.inter(
                               color: Colors.white54,
                               fontSize: 11)),
@@ -1197,7 +1213,7 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> with WidgetsBinding
                       ],
                     ),
                     const SizedBox(height: 6),
-                    if (_isOrdersBuyTab)
+                    if (buyTab)
                     Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8, vertical: 3),
@@ -1216,7 +1232,7 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> with WidgetsBinding
               ],
             ),
             const SizedBox(height: 12),
-            if (_isOrdersBuyTab) ...[
+            if (buyTab) ...[
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -1290,8 +1306,8 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> with WidgetsBinding
                 ],
               ),
             ],
-            if (!_isOrdersBuyTab && (trade.bankName == null)) const SizedBox(height: 4),
-            if (_isOrdersBuyTab && (trade.bankName != null ||
+            if (!buyTab && (trade.bankName == null)) const SizedBox(height: 4),
+            if (buyTab && (trade.bankName != null ||
                 trade.bankAccountNumber != null)) ...[
               const SizedBox(height: 10),
               Container(
@@ -1330,7 +1346,7 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> with WidgetsBinding
                 ]),
               ),
             ],
-            if (_isOrdersBuyTab) ...[
+            if (buyTab) ...[
               const SizedBox(height: 10),
               Row(
                 mainAxisAlignment:
