@@ -25,6 +25,7 @@ class _WithdrawFormScreenState extends State<WithdrawFormScreen> {
   final TextEditingController _amountController = TextEditingController();
   final FocusNode _addressFocus = FocusNode();
   final FocusNode _amountFocus = FocusNode();
+  String? _selectedNetwork;
 
   bool _isSubmitting = false;
 
@@ -55,9 +56,28 @@ class _WithdrawFormScreenState extends State<WithdrawFormScreen> {
     return null;
   }
 
+  List<String> get _networkOptions {
+    final symbol = widget.wallet.currency.symbol.toUpperCase();
+    switch (symbol) {
+      case 'USDT':
+        return ['TRC20', 'ERC20', 'BEP20'];
+      case 'USDC':
+        return ['ERC20', 'TRC20', 'BEP20'];
+      case 'BTC':
+        return ['BTC'];
+      case 'ETH':
+        return ['ERC20'];
+      case 'BNB':
+        return ['BEP20'];
+      default:
+        return [symbol];
+    }
+  }
+
   @override
   void initState() {
     super.initState();
+    _selectedNetwork = _networkOptions.first;
     _addressFocus.addListener(() => setState(() {}));
     _amountFocus.addListener(() => setState(() {}));
     _amountController.addListener(_onAmountChanged);
@@ -222,6 +242,11 @@ class _WithdrawFormScreenState extends State<WithdrawFormScreen> {
               _buildAddressField(),
               const SizedBox(height: 20),
 
+              _buildSectionLabel('Network'),
+              const SizedBox(height: 8),
+              _buildNetworkField(),
+              const SizedBox(height: 20),
+
               _buildSectionLabel('Amount'),
               const SizedBox(height: 8),
               _buildAmountField(symbol),
@@ -372,6 +397,45 @@ class _WithdrawFormScreenState extends State<WithdrawFormScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  // ── Network field (UI only) ────────────────────────────────────────────────
+  Widget _buildNetworkField() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      decoration: BoxDecoration(
+        color: const Color(0xFF141416),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.07)),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: _selectedNetwork,
+          isExpanded: true,
+          dropdownColor: const Color(0xFF141416),
+          icon: const Icon(
+            Icons.keyboard_arrow_down_rounded,
+            color: Color(0xFFE4B53E),
+          ),
+          style: AppTheme.inter(color: Colors.white, fontSize: 14),
+          items: _networkOptions
+              .map(
+                (network) => DropdownMenuItem<String>(
+                  value: network,
+                  child: Text(
+                    network,
+                    style: AppTheme.inter(color: Colors.white, fontSize: 14),
+                  ),
+                ),
+              )
+              .toList(),
+          onChanged: (value) {
+            if (value == null) return;
+            setState(() => _selectedNetwork = value);
+          },
+        ),
       ),
     );
   }
