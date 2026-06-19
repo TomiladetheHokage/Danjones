@@ -319,7 +319,7 @@ const SizedBox(height: 30),
                   subtitle: 'Invite friends, earn up to 40%',
                   trailing: _comingSoonBadge(),
                   onTap: () {
-                    _showComingSoon(context);
+                    showComingSoon(context);
                     // Navigator.push(
                     //   context,
                     //   MaterialPageRoute(builder: (context) => const ReferralScreen()),
@@ -389,7 +389,7 @@ const SizedBox(height: 30),
       ),
     );
   }
-
+ 
   Widget _buildMenuGroup(List<Widget> items) {
     return Container(
       decoration: BoxDecoration(
@@ -491,7 +491,10 @@ const SizedBox(height: 30),
       ),
     );
   }
-void _showComingSoon(BuildContext context) {
+
+}
+
+void showComingSoon(BuildContext context) {
   showModalBottomSheet(
     context: context,
     backgroundColor: Colors.transparent,
@@ -529,20 +532,13 @@ void _showComingSoon(BuildContext context) {
                   mainAxisSize: MainAxisSize.min,
                   children: const [
                     Text(
-                      "Coming Soon",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                      ),
+                      'Coming Soon',
+                      style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
                     ),
                     SizedBox(height: 4),
                     Text(
-                      "This feature is still in development.",
-                      style: TextStyle(
-                        color: Colors.white54,
-                        fontSize: 12,
-                      ),
+                      'This feature is still in development.',
+                      style: TextStyle(color: Colors.white54, fontSize: 12),
                     ),
                   ],
                 ),
@@ -551,7 +547,7 @@ void _showComingSoon(BuildContext context) {
               GestureDetector(
                 onTap: () => Navigator.pop(context),
                 child: const Icon(Icons.close, color: Colors.white54),
-              )
+              ),
             ],
           ),
         ),
@@ -576,5 +572,4 @@ Widget _comingSoonBadge() {
       ),
     ),
   );
-}
 }

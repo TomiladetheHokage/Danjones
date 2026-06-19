@@ -7,6 +7,7 @@ import '../models/crypto_asset.dart';
 import 'deposit_select_coin_screen.dart';
 import 'home_and_market/market_asset_screen.dart';
 import 'withdraw/withdraw_select_coin_screen.dart';
+import 'profile_screen.dart';
 
 class AssetDetailsScreen extends StatefulWidget {
   final Wallet wallet;
@@ -190,7 +191,7 @@ class _AssetDetailsScreenState extends State<AssetDetailsScreen> {
 
   Widget _buildActionButton(String iconPath, String label, {VoidCallback? onTap, bool comingSoon = false}) {
     return GestureDetector(
-      onTap: comingSoon ? () => _showComingSoon() : onTap,
+      onTap: comingSoon ? () => showComingSoon(context) : onTap,
       child: Column(
         children: [
           Stack(
@@ -226,61 +227,7 @@ class _AssetDetailsScreenState extends State<AssetDetailsScreen> {
     );
   }
 
-  void _showComingSoon() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      barrierColor: Colors.black.withOpacity(0.6),
-      builder: (_) {
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: const Color(0xFF1C1D21),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.white.withOpacity(0.05)),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE4B53E).withOpacity(0.15),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.rocket_launch, color: Color(0xFFE4B53E), size: 20),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: const [
-                      Text(
-                        'Coming Soon',
-                        style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
-                      ),
-                      SizedBox(height: 4),
-                      Text(
-                        'This feature is still in development.',
-                        style: TextStyle(color: Colors.white54, fontSize: 12),
-                      ),
-                    ],
-                  ),
-                ),
-                GestureDetector(
-                  onTap: () => Navigator.pop(context),
-                  child: const Icon(Icons.close, color: Colors.white54),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
+  
 
   Widget _buildSegmentedControl() {
     return Container(

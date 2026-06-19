@@ -72,7 +72,132 @@ class TermsScreen extends StatelessWidget {
                 content:
                     'You may not use the Platform for any illegal activity, including money laundering, terrorist financing, or any activity that violates any law, statute, ordinance, or regulation. Market manipulation, including wash trading and spoofing, is strictly prohibited and will result in immediate account termination and reporting to relevant authorities.',
               ),
-              
+
+               _buildLegalSection(
+                title: '6. Acceptance of Terms',
+                content:
+                'By using the P2P platform, you agree to comply with these Terms & Conditions and all applicable laws and regulations.'
+              ),
+
+                 _buildLegalSection(
+                title: '7. Eligibility',
+              content: '''
+• Users must complete KYC before trading.
+• Users must provide accurate information.
+• Users must be 18 years or older.
+''',
+              ),
+
+                     _buildLegalSection(
+                title: '8. Escrow Service',
+              content: '''
+• The platform will hold digital assets in escrow during active trades.
+          • Crypto assets will only be released according to the platform’s procedures.
+• Users must not request or make releases outside the platform.
+''',
+              ),
+
+                 _buildLegalSection(
+                title: '9. User Responsibilities',
+              content: '''
+Users agree to:
+• Trade honestly and in good faith.
+• Use payment accounts registered in their own name.
+• Verify receipt of funds before releasing crypto.
+• Follow all platform instructions during transactions.
+''',
+              ),
+
+
+_buildLegalSection(
+  title: '10. Prohibited Activities',
+  content: '''
+• Fraud, scams, or deceptive practices.
+• Uploading fake payment receipts or proof of payment.
+• Using third-party bank accounts without authorization.
+• Money laundering or illegal financial activities.
+• Harassment, threats, or abusive conduct.
+• Taking trades outside the platform to avoid fees or security controls.
+''',
+),
+
+_buildLegalSection(
+  title: '11. Payment Rules',
+  content: '''
+• Buyers must make payments using approved payment methods.
+• Sellers must verify funds have been received before releasing crypto.
+• Screenshots alone are not considered proof of payment.
+''',
+),
+
+_buildLegalSection(
+  title: '12. Disputes',
+  content: '''
+• Either party may open a dispute if a transaction issue arises.
+• The platform may request evidence from both parties.
+• The platform’s decision after review shall be final.
+''',
+),
+
+_buildLegalSection(
+  title: '13. Merchant Accounts',
+  content: '''
+• Merchants may be subject to additional verification requirements.
+• The platform may suspend or revoke merchant status for violations.
+• Merchants must maintain sufficient funds and comply with merchant policies.
+''',
+),
+
+_buildLegalSection(
+  title: '14. Account Suspension',
+  content: '''
+• The platform may freeze, suspend, or terminate accounts involved in:
+  - Fraudulent activity.
+  - Violation of these Terms.
+  - Suspicious or unlawful transactions.
+''',
+),
+
+_buildLegalSection(
+  title: '15. Limitation of Liability',
+  content: '''
+• The platform provides escrow and dispute resolution services but does not guarantee profits or transaction outcomes.
+• Users are responsible for their own trading decisions.
+''',
+),
+
+_buildLegalSection(
+  title: '16. Compliance',
+  content: '''
+• Users agree to comply with all applicable AML (Anti-Money Laundering), CTF (Counter-Terrorist Financing), and financial regulations.
+''',
+),
+
+_buildLegalSection(
+  title: '17. Amendments',
+  content: '''
+• The platform may update these Terms & Conditions at any time.
+• Continued use of the platform constitutes acceptance of the updated terms.
+''',
+),
+
+_buildLegalSection(
+  title: '18. Risk Warning',
+  content: '''
+• Cryptocurrency trading involves risk.
+• Users may experience losses due to market fluctuations, operational errors, or other factors.
+• Users trade at their own risk.
+''',
+),
+
+_buildLegalSection(
+  title: 'Simple Notice for Users',
+  content: '''
+• Never release crypto based on screenshots.
+• Confirm funds have been received in your account before releasing assets.
+• Keep all communications and transactions within the platform.
+''',
+),
               const SizedBox(height: 12),
 
 Center(

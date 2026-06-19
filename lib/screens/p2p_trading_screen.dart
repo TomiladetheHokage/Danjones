@@ -194,22 +194,21 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> with WidgetsBinding
     }
   }
 
-  List<P2PAd> _filterAds(List<P2PAd> all, {required bool isBuySide}) {
-    final activeAds = all.where((ad) => ad.isActive).toList();
+List<P2PAd> _filterAds(List<P2PAd> all, {required bool isBuySide}) {
+  final activeAds = all.where((ad) => ad.isActive).toList();
 
-    final tokenAndSide = activeAds.where((ad) {
-      return ad.currencySymbol.toUpperCase() == _selectedToken.toUpperCase() &&
-          ad.type.toLowerCase() == (isBuySide ? 'sell' : 'buy');
-    }).toList();
-    if (tokenAndSide.isNotEmpty) return tokenAndSide;
+  // 🔥 STRICT FILTER: ONLY BUY ADS
+  final buyAds = activeAds.where((ad) =>
+      ad.type.toLowerCase() == 'buy'
+  ).toList();
 
-    final tokenOnly = activeAds
-        .where((ad) => ad.currencySymbol.toUpperCase() == _selectedToken.toUpperCase())
-        .toList();
-    if (tokenOnly.isNotEmpty) return tokenOnly;
+  final tokenFiltered = buyAds.where((ad) =>
+      ad.currencySymbol.toUpperCase() ==
+      _selectedToken.toUpperCase()
+  ).toList();
 
-    return activeAds;
-  }
+  return tokenFiltered.isNotEmpty ? tokenFiltered : buyAds;
+}
 
   List<P2PTrade> _filterTrades(List<P2PTrade> all, {required bool isBuyTab}) {
     final currentUserId = DataStore.instance.dashboard.value?.user.id;

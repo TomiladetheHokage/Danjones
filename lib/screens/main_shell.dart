@@ -18,6 +18,9 @@ class MainShell extends StatefulWidget {
 }
 
 class MainShellState extends State<MainShell> {
+  void _showComingSoon() {
+    showComingSoon(context);
+  }
   int _currentIndex = 0;
 
   void setTab(int index) {
@@ -137,7 +140,9 @@ class MainShellState extends State<MainShell> {
                   icon: item.icon,
                   label: item.label,
                   selected: isSelected,
-                  onTap: () => setState(() => _currentIndex = index),
+   onTap: () {
+  setState(() => _currentIndex = index);
+},
                 );
               }),
             ),
@@ -198,7 +203,9 @@ class MainShellState extends State<MainShell> {
 
   Widget _buildCenterButton() {
     return GestureDetector(
-      onTap: () => setState(() => _currentIndex = 2),
+ onTap: () {
+  _showComingSoon();
+},
       child: SizedBox(
         width: MediaQuery.of(context).size.width / 5,
         child: Column(
