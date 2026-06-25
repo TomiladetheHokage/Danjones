@@ -1,4 +1,4 @@
-package com.example.danjones
+package com.cyberjunior.danjones
 
 import io.flutter.embedding.android.FlutterActivity
 

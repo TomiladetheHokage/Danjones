@@ -13,7 +13,7 @@ if (keyPropertiesFile.exists()) {
 }
 
 android {
-    namespace = "com.example.danjones"
+    namespace = "com.cyberjunior.danjones"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -27,7 +27,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.danjones"
+        applicationId = "com.cyberjunior.danjones"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
