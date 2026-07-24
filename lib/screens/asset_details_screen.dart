@@ -282,45 +282,58 @@ class _AssetDetailsScreenState extends State<AssetDetailsScreen> {
           style: AppTheme.inter(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white),
         ),
       ),
-      ...List.generate(3, (index) => _buildHistoryItem()),
+      _buildEmptyHistoryState(),
     ];
   }
 
-  Widget _buildHistoryItem() {
-    final symbol = widget.wallet.currency.symbol.toUpperCase();
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 32),
-      child: Column(
+  Widget _buildEmptyHistoryState() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.04),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
+      ),
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('From: 0x6f...a98', style: AppTheme.inter(color: Colors.white54, fontSize: 11)),
-              Text('07 Oct 2021 at 02:32 AM', style: AppTheme.inter(color: Colors.white54, fontSize: 11)),
-            ],
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: const Color(0xFFE4B53E).withOpacity(0.16),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: const Icon(
+              Icons.history,
+              color: Color(0xFFE4B53E),
+              size: 24,
+            ),
           ),
-          const SizedBox(height: 10),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('Receive', style: AppTheme.inter(fontWeight: FontWeight.w600, fontSize: 16, color: Colors.white)),
-              Text('0.0636 $symbol', style: AppTheme.inter(fontWeight: FontWeight.w700, fontSize: 16, color: Colors.white)),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  const Icon(Icons.check, color: Colors.white54, size: 14),
-                  const SizedBox(width: 4),
-                  Text('Confirmed', style: AppTheme.inter(color: Colors.white54, fontSize: 12)),
-                ],
-              ),
-              Text('~ \$107.17', style: AppTheme.inter(color: Colors.white54, fontSize: 12)),
-            ],
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'No transaction history',
+                  style: AppTheme.inter(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Your deposits, withdrawals and transfers will appear here.',
+                  style: AppTheme.inter(
+                    fontSize: 13,
+                    color: Colors.white.withOpacity(0.55),
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),

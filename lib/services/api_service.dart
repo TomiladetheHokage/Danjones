@@ -16,7 +16,7 @@ import '../models/p2p_trade.dart';
 class ApiService {
   // Flutterwave Config
   
-  static const String flutterwavePublicKey = 'FLWPUBK-3cd3e4420c788a771289618956cebbb7-X';
+  static const String flutterwavePublicKey = 'FLWPUBK-f10c2e8f2a4a229a6b5b551905df80a5-X';
   static const String flutterwaveBaseUrl = 'https://api.flutterwave.com/v3';
 
   // Production API Base URL
