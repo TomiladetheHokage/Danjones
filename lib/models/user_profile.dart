@@ -9,6 +9,8 @@ class UserProfile {
   final String? emailVerifiedAt;
   final String? phoneVerifiedAt;
   final String createdAt;
+  final String kycStatus;   // "approved" | "pending" | "rejected" | ""
+  final bool kycVerified;
 
   UserProfile({
     required this.id,
@@ -21,6 +23,8 @@ class UserProfile {
     this.emailVerifiedAt,
     this.phoneVerifiedAt,
     required this.createdAt,
+    this.kycStatus = '',
+    this.kycVerified = false,
   });
 
   factory UserProfile.fromJson(Map<String, dynamic> json) {
@@ -31,10 +35,12 @@ class UserProfile {
       username: json['username'],
       phone: json['phone'],
       avatar: json['avatar'],
-      hasPin: json['has_pin'] ?? false,
+      hasPin: json['has_pin'] == true || json['has_pin'] == 1,
       emailVerifiedAt: json['email_verified_at'],
       phoneVerifiedAt: json['phone_verified_at'],
       createdAt: json['created_at'] ?? '',
+      kycStatus: json['kyc_status']?.toString() ?? '',
+      kycVerified: json['kyc_verified'] == true || json['kyc_verified'] == 1,
     );
   }
 }

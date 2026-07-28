@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import 'edit_profile_screen.dart';
-import 'referral_screen.dart';
 import 'settings_screen.dart';
 import 'security_settings_screen.dart';
 import 'customer_support_screen.dart';
-import 'enable_2fa_scan_screen.dart';
 import 'auth/login_screen.dart';
 import 'trade_screen.dart';
 import 'p2p/my_ads_screen.dart';
@@ -29,6 +27,7 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   late Future<UserProfile> userFuture;
+  UserProfile? _profile; // cached once loaded
 
   Future<void> _handleLogout() async {
     try {
@@ -53,6 +52,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void initState() {
     super.initState();
     userFuture = ApiService.getUserProfile();
+    // Pre-load profile into state so the KYC badge and other widgets
+    // outside the FutureBuilder re-render correctly when data arrives.
+    userFuture.then((profile) {
+      if (mounted) setState(() => _profile = profile);
+    }).catchError((_) {});
   }
 
   @override
@@ -104,14 +108,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 builder: (context, snapshot) {
                   String? avatarUrl;
                   String email = 'user***@email.com';
-                  String uid = '8839201';
 
                   if (snapshot.hasData) {
                     if (snapshot.data!.avatar != null && snapshot.data!.avatar!.isNotEmpty) {
                       avatarUrl = ApiService.resolveUrl(snapshot.data!.avatar);
                     }
                     email = snapshot.data!.email;
-                    uid = snapshot.data!.id.toString();
                   }
 
                   return Column(
@@ -202,9 +204,13 @@ Container(
         MaterialPageRoute(builder: (_) => const EditProfileScreen()),
       );
       if (updated == true && mounted) {
+        final refreshed = ApiService.getUserProfile();
         setState(() {
-          userFuture = ApiService.getUserProfile();
+          userFuture = refreshed;
         });
+        refreshed.then((p) {
+          if (mounted) setState(() => _profile = p);
+        }).catchError((_) {});
       }
     },
     child: Row(
@@ -241,24 +247,7 @@ const SizedBox(height: 30),
     MaterialPageRoute(builder: (_) => const VerificationCenterScreen()),
   );
 },
-       trailing: SizedBox(
-  height: 20,
-  child: Container(
-    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-    decoration: BoxDecoration(
-      color: const Color(0xFFE4B53E).withOpacity(0.15),
-      borderRadius: BorderRadius.circular(12),
-    ),
-    child: Text(
-      'Unverified',
-      style: AppTheme.inter(
-        color: const Color(0xFFE4B53E),
-        fontSize: 10,
-        fontWeight: FontWeight.w500,
-      ),
-    ),
-  ),
-),
+       trailing: _buildKycBadge(),
                 ),
               ]),
               const SizedBox(height: 16),
@@ -390,6 +379,53 @@ const SizedBox(height: 30),
     );
   }
  
+  Widget _buildKycBadge() {
+    final bool verified = _profile?.kycVerified ?? false;
+    final String status = _profile?.kycStatus.toLowerCase() ?? '';
+
+    // Determine label + colours based on kyc_verified and kyc_status
+    final String label;
+    final Color bg;
+    final Color fg;
+
+    if (verified || status == 'approved') {
+      label = 'Verified';
+      bg = const Color(0xFF4CAF50).withOpacity(0.15);
+      fg = const Color(0xFF4CAF50);
+    } else if (status == 'pending') {
+      label = 'Pending';
+      bg = const Color(0xFFE4B53E).withOpacity(0.15);
+      fg = const Color(0xFFE4B53E);
+    } else if (status == 'rejected') {
+      label = 'Rejected';
+      bg = const Color(0xFFEF5350).withOpacity(0.15);
+      fg = const Color(0xFFEF5350);
+    } else {
+      label = 'Unverified';
+      bg = const Color(0xFFE4B53E).withOpacity(0.15);
+      fg = const Color(0xFFE4B53E);
+    }
+
+    return SizedBox(
+      height: 20,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Text(
+          label,
+          style: AppTheme.inter(
+            color: fg,
+            fontSize: 10,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildMenuGroup(List<Widget> items) {
     return Container(
       decoration: BoxDecoration(

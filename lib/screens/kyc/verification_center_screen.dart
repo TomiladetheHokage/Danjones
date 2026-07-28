@@ -1,9 +1,24 @@
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
+import '../../models/user_profile.dart';
+import '../../services/api_service.dart';
 import 'kyc_tier2_screen.dart';
 
-class VerificationCenterScreen extends StatelessWidget {
+class VerificationCenterScreen extends StatefulWidget {
   const VerificationCenterScreen({super.key});
+
+  @override
+  State<VerificationCenterScreen> createState() => _VerificationCenterScreenState();
+}
+
+class _VerificationCenterScreenState extends State<VerificationCenterScreen> {
+  late Future<UserProfile> _profileFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _profileFuture = ApiService.getUserProfile();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -22,158 +37,151 @@ class VerificationCenterScreen extends StatelessWidget {
         ),
         centerTitle: true,
       ),
-      body: SingleChildScrollView(
-        physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            const SizedBox(height: 20),
+      body: FutureBuilder<UserProfile>(
+        future: _profileFuture,
+        builder: (context, snapshot) {
+          final bool verified = snapshot.data?.kycVerified ?? false;
+          final String status = snapshot.data?.kycStatus.toLowerCase() ?? '';
+          final bool isPending = status == 'pending';
+          final bool isRejected = status == 'rejected';
+          final bool isApproved = verified || status == 'approved';
 
-                        Image.asset(
-              'assets/icons/tick-circle.png',
-              width: 72,
-              height: 72,
-              fit: BoxFit.contain,
-            ),
-            const SizedBox(height: 16),
+          return SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                const SizedBox(height: 20),
 
-            Text(
-              'Tier 1 Verified',
-              style: AppTheme.inter(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Identity verified automatically via your\nsecure sign-up credentials.',
-              textAlign: TextAlign.center,
-              style: AppTheme.inter(color: Colors.white38, fontSize: 13, height: 1.5),
-            ),
-            const SizedBox(height: 28),
+                // Status icon
+                if (snapshot.connectionState == ConnectionState.waiting)
+                  const SizedBox(
+                    height: 72,
+                    width: 72,
+                    child: CircularProgressIndicator(color: Color(0xFFE4B53E), strokeWidth: 2),
+                  )
+                else if (isApproved)
+                  Image.asset('assets/icons/tick-circle.png', width: 72, height: 72, fit: BoxFit.contain)
+                else if (isPending)
+                  Container(
+                    width: 72,
+                    height: 72,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: const Color(0xFFE4B53E).withOpacity(0.12),
+                    ),
+                    child: const Icon(Icons.hourglass_top_rounded, color: Color(0xFFE4B53E), size: 36),
+                  )
+                else if (isRejected)
+                  Container(
+                    width: 72,
+                    height: 72,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: const Color(0xFFEF5350).withOpacity(0.12),
+                    ),
+                    child: const Icon(Icons.cancel_outlined, color: Color(0xFFEF5350), size: 36),
+                  )
+                else
+                  Container(
+                    width: 72,
+                    height: 72,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white.withOpacity(0.06),
+                    ),
+                    child: const Icon(Icons.verified_user_outlined, color: Colors.white38, size: 36),
+                  ),
 
-            // Section label — white bold, left aligned
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                'Current Privileges',
-                style: AppTheme.inter(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
-              ),
-            ),
-            const SizedBox(height: 12),
+                const SizedBox(height: 16),
 
-            _privilegeRow(
-              // iconAsset: 'assets/icons/bank.png',
-              label: 'Deposit Limit',
-              valueWidget: Text(
-                'Unlimited NGN',
-                style: AppTheme.inter(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
-              ),
-            ),
-            const SizedBox(height: 10),
-            // _privilegeRow(
-            //   // iconAsset: 'assets/icons/bank.png',
-            //   label: 'Withdrawal Limit',
-            //   valueWidget: RichText(
-            //     text: TextSpan(
-            //       children: [
-            //         TextSpan(
-            //           text: '500,000 NGN',
-            //           style: AppTheme.inter(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
-            //         ),
-            //         TextSpan(
-            //           text: ' / Daily',
-            //           style: AppTheme.inter(color: Colors.white38, fontSize: 13),
-            //         ),
-            //       ],
-            //     ),
-            //   ),
-            // ),
-            const SizedBox(height: 10),
-            _privilegeRow(
-              // iconAsset: 'assets/icons/bank.png',
-              label: 'P2P Trading',
-              valueWidget: Text(
-                'Active',
-                style: AppTheme.inter(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
-              ),
-            ),
-            const SizedBox(height: 10),
-            // _privilegeRow(
-            //   // iconAsset: 'assets/icons/bank.png',
-            //   label: 'Spot Trading',
-            //   valueWidget: Text(
-            //     'Active',
-            //     style: AppTheme.inter(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
-            //   ),
-            // ),
-            const SizedBox(height: 24),
+                // Title
+                Text(
+                  isApproved
+                      ? 'Tier 1 Verified'
+                      : isPending
+                          ? 'Verification Pending'
+                          : isRejected
+                              ? 'Verification Rejected'
+                              : 'Not Verified',
+                  style: AppTheme.inter(
+                    color: isApproved
+                        ? Colors.white
+                        : isPending
+                            ? const Color(0xFFE4B53E)
+                            : isRejected
+                                ? const Color(0xFFEF5350)
+                                : Colors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  isApproved
+                      ? 'Identity verified automatically via your\nsecure sign-up credentials.'
+                      : isPending
+                          ? 'Your documents are under review.\nWe\'ll notify you once complete.'
+                          : isRejected
+                              ? 'Your verification was not successful.\nPlease resubmit your documents.'
+                              : 'Complete identity verification\nto unlock full platform features.',
+                  textAlign: TextAlign.center,
+                  style: AppTheme.inter(color: Colors.white38, fontSize: 13, height: 1.5),
+                ),
+                const SizedBox(height: 28),
 
-            // Increase limits banner with thumbs
-            // Container(
-            //   width: double.infinity,
-            //   padding: const EdgeInsets.all(16),
-            //   decoration: BoxDecoration(
-            //     color: const Color(0xFF151515),
-            //     borderRadius: BorderRadius.circular(14),
-            //     border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
-            //   ),
-            //   child: Row(
-            //     crossAxisAlignment: CrossAxisAlignment.start,
-            //     children: [
-            //       Expanded(
-            //         child: Column(
-            //           crossAxisAlignment: CrossAxisAlignment.start,
-            //           children: [
-            //             Text(
-            //               'Increase your limits',
-            //               style: AppTheme.inter(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
-            //             ),
-            //             const SizedBox(height: 6),
-            //             RichText(
-            //               text: TextSpan(
-            //                 style: AppTheme.inter(color: Colors.white54, fontSize: 12, height: 1.5),
-            //                 children: [
-            //                   const TextSpan(text: 'Verify your Government ID (BVN/NIN) to unlock Tier 2 withdrawal limits up to '),
-            //                   TextSpan(
-            //                     text: '50M NGN.',
-            //                     style: AppTheme.inter(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
-            //                   ),
-            //                 ],
-            //               ),
-            //             ),
-            //           ],
-            //         ),
-            //       ),
-            //       const SizedBox(width: 12),
-            //       Column(
-            //         children: [
-            //           Icon(Icons.thumb_up_outlined, color: Colors.white38, size: 22),
-            //           const SizedBox(height: 8),
-            //           Icon(Icons.thumb_down_outlined, color: Colors.white38, size: 22),
-            //         ],
-            //       ),
-            //     ],
-            //   ),
-            // ),
-            const SizedBox(height: 24),
+                // Show privileges only when verified
+                if (isApproved) ...[
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Current Privileges',
+                      style: AppTheme.inter(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  _privilegeRow(
+                    label: 'Deposit Limit',
+                    valueWidget: Text(
+                      'Unlimited NGN',
+                      style: AppTheme.inter(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  _privilegeRow(
+                    label: 'P2P Trading',
+                    valueWidget: Text(
+                      'Active',
+                      style: AppTheme.inter(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                ],
 
-            // Upgrade button — outlined gold
-            _buildOutlinedButton(
-              label: 'Upgrade to Tier 2  →',
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const KycTier2Screen()),
-              ),
+                // Action button — only show upgrade when verified; show verify when not
+                if (isApproved)
+                  _buildOutlinedButton(
+                    label: 'Upgrade to Tier 2  →',
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const KycTier2Screen()),
+                    ),
+                  )
+                else if (!isPending)
+                  _buildPrimaryButton(
+                    label: isRejected ? 'Resubmit Verification' : 'Start Verification',
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const KycTier2Screen()),
+                    ),
+                  ),
+
+                const SizedBox(height: 40),
+              ],
             ),
-            const SizedBox(height: 14),
-
-            // Start Trading — filled gold
-            // _buildPrimaryButton(
-            //   label: 'Start Trading',
-            //   onTap: () => Navigator.pop(context),
-            // ),
-            const SizedBox(height: 40),
-          ],
-        ),
+          );
+        },
       ),
     );
   }

@@ -310,20 +310,20 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             _buildSectionTitle('Identity Information'),
             _buildTextField(
               label: 'Full Name (KYC Verified)',
-              initialValue: 'Emeka Okafor',
+              initialValue: _profile?.name ?? '—',
               readOnly: true,
               suffixIcon: Icons.lock_outline,
             ),
             _buildTextField(
               label: 'Username',
-              initialValue: 'CryptoKing_NG',
+              initialValue: _profile?.username ?? '—',
             ),
 
             const SizedBox(height: 20),
             _buildSectionTitle('Contact Details'),
             _buildTextField(
               label: 'Email Address',
-              initialValue: 'emeka.o@example.com',
+              initialValue: _profile?.email ?? '—',
               readOnly: true,
               suffixIcon: Icons.lock_outline,
             ),
@@ -367,7 +367,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: Colors.white.withOpacity(0.08)),
                     ),
-                    child: Text('80 1234 5678', style: AppTheme.inter(color: Colors.white, fontSize: 14)),
+                    child: Text(
+                      _formatLocalPhone(_profile?.phone),
+                      style: AppTheme.inter(color: Colors.white, fontSize: 14),
+                    ),
                   ),
                 ),
               ],
@@ -451,6 +454,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         ),
       ),
     );
+  }
+
+  /// Strips the leading 0 from a Nigerian number so it displays after +234.
+  /// e.g. "08150686400" → "8150686400"
+  String _formatLocalPhone(String? phone) {
+    if (phone == null || phone.isEmpty) return '—';
+    return phone.startsWith('0') ? phone.substring(1) : phone;
   }
 
   Widget _buildSectionTitle(String title, {bool isLocation = false}) {

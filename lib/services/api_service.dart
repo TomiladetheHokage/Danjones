@@ -1109,4 +1109,42 @@ class ApiService {
       throw Exception(errMsg);
     }
   }
+
+  /// Fetches transaction history for the wallet identified by [currencyId].
+  /// Calls GET /wallets/wallet/{currencyId}
+  static Future<List<Map<String, dynamic>>> getWalletTransactions(int currencyId) async {
+    final response = await _makeRequest(
+      () => http.get(
+        Uri.parse('$baseUrl/wallets/wallet/$currencyId'),
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $authToken',
+        },
+      ),
+      requestName: 'GET_WALLET_TRANSACTIONS',
+    );
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      final dynamic body = jsonDecode(response.body);
+      // Response shape: { "wallet": { ..., "transactions": [...] } }
+      if (body is Map<String, dynamic>) {
+        final wallet = body['wallet'];
+        if (wallet is Map<String, dynamic>) {
+          final txns = wallet['transactions'];
+          if (txns is List) return txns.cast<Map<String, dynamic>>();
+        }
+        // Fallback: flat keys at the top level
+        final inner = body['transactions'] ?? body['data'] ?? body['wallet_transactions'];
+        if (inner is List) return inner.cast<Map<String, dynamic>>();
+      }
+      if (body is List) return body.cast<Map<String, dynamic>>();
+      return [];
+    } else {
+      final dynamic data = jsonDecode(response.body);
+      final errMsg = data is Map
+          ? (data['message'] ?? data['error'] ?? 'Failed to load transactions (${response.statusCode})')
+          : 'Failed to load transactions (${response.statusCode})';
+      throw Exception(errMsg);
+    }
+  }
 }
