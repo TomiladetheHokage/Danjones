@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
-import '../../models/p2p_ad.dart';
-import '../../models/p2p_trade.dart';
+import '../../models/p2p/p2p_ad.dart';
+import '../../models/p2p/p2p_trade.dart';
 import '../../services/api_service.dart';
 import '../../services/data_store.dart';
 import '../../theme/app_theme.dart';
-import '../../widgets/custom_dialog.dart';
+import '../../widgets/shared/custom_dialog.dart';
 
 class P2PSellerPaidTradesScreen extends StatefulWidget {
   final P2PAd ad;

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../theme/app_theme.dart';
 import '../../services/api_service.dart';
-import '../../widgets/custom_dialog.dart';
+import '../../widgets/shared/custom_dialog.dart';
 
 class P2PAddPaymentMethodScreen extends StatefulWidget {
   const P2PAddPaymentMethodScreen({super.key});

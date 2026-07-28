@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import '../models/dashboard_data.dart';
+import '../models/wallet/dashboard_data.dart';
 
 class DataStore {
   // Singleton pattern

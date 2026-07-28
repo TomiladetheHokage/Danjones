@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../widgets/custom_text_field.dart';
-import '../../widgets/custom_dialog.dart';
+import '../../widgets/shared/custom_text_field.dart';
+import '../../widgets/shared/custom_dialog.dart';
 import '../../services/api_service.dart';
-import '../main_shell.dart';
+import '../home/main_shell.dart';
 import 'sign_up_screen.dart';
 import 'forgot_password_screen.dart';
 

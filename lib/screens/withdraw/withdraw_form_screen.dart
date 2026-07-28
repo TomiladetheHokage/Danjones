@@ -6,10 +6,10 @@ import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:http/http.dart' as http;
 
-import '../../models/wallet.dart';
+import '../../models/wallet/wallet.dart';
 import '../../services/api_service.dart';
 import '../../theme/app_theme.dart';
-import '../../widgets/custom_dialog.dart';
+import '../../widgets/shared/custom_dialog.dart';
 import 'qr_scanner_screen.dart';
 
 class WithdrawFormScreen extends StatefulWidget {

@@ -6,7 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 
 import '../../services/api_service.dart';
-import '../../widgets/custom_dialog.dart';
+import '../../widgets/shared/custom_dialog.dart';
 import 'create_pin_screen.dart';
 
 /// Two-state email verification screen.

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../models/p2p_ad.dart';
+import '../../models/p2p/p2p_ad.dart';
 import '../../services/api_service.dart';
 import '../../theme/app_theme.dart';
 

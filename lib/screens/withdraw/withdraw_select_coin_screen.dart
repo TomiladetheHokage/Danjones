@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
-import '../../models/wallet.dart';
+import '../../models/wallet/wallet.dart';
 import '../../services/data_store.dart';
 import '../../theme/app_theme.dart';
 import 'withdraw_form_screen.dart';

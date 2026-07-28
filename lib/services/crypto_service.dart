@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
-import '../models/crypto_asset.dart';
+import '../models/market/crypto_asset.dart';
 import '../widgets/interactive_chart/candle_data.dart';
 
 class CryptoService {

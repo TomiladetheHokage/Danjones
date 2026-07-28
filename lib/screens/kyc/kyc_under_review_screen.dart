@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
-import '../main_shell.dart';
+import '../home/main_shell.dart';
 
 class KycUnderReviewScreen extends StatelessWidget {
   const KycUnderReviewScreen({super.key});

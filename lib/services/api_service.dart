@@ -5,13 +5,13 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-import '../models/user_profile.dart';
-import '../models/currency.dart';
-import '../models/dashboard_data.dart';
-import '../models/wallet.dart';
-import '../models/app_notification.dart';
-import '../models/p2p_ad.dart';
-import '../models/p2p_trade.dart';
+import '../models/auth/user_profile.dart';
+import '../models/market/currency.dart';
+import '../models/wallet/dashboard_data.dart';
+import '../models/wallet/wallet.dart';
+import '../models/shared/app_notification.dart';
+import '../models/p2p/p2p_ad.dart';
+import '../models/p2p/p2p_trade.dart';
 
 class ApiService {
   // Flutterwave Config

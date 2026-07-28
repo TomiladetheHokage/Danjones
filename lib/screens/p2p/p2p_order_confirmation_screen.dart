@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
-import '../../models/p2p_ad.dart';
+import '../../models/p2p/p2p_ad.dart';
 import '../../services/api_service.dart';
 import '../../services/data_store.dart';
 import '../../widgets/p2p/p2p_info_row.dart';

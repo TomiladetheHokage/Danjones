@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
-import '../../models/user_profile.dart';
+import '../../models/auth/user_profile.dart';
 import '../../services/api_service.dart';
 import 'kyc_tier2_screen.dart';
 
