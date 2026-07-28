@@ -197,17 +197,20 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> with WidgetsBinding
 List<P2PAd> _filterAds(List<P2PAd> all, {required bool isBuySide}) {
   final activeAds = all.where((ad) => ad.isActive).toList();
 
-  // 🔥 STRICT FILTER: ONLY BUY ADS
-  final buyAds = activeAds.where((ad) =>
-      ad.type.toLowerCase() == 'buy'
-  ).toList();
+  // Buy tab  → user wants to BUY crypto, so show merchants with SELL ads
+  // Sell tab → user wants to SELL crypto, so show merchants with BUY ads
+  final targetType = isBuySide ? 'sell' : 'buy';
 
-  final tokenFiltered = buyAds.where((ad) =>
-      ad.currencySymbol.toUpperCase() ==
-      _selectedToken.toUpperCase()
-  ).toList();
+  final typeFiltered = activeAds
+      .where((ad) => ad.type.toLowerCase() == targetType)
+      .toList();
 
-  return tokenFiltered.isNotEmpty ? tokenFiltered : buyAds;
+  final tokenFiltered = typeFiltered
+      .where((ad) => ad.currencySymbol.toUpperCase() == _selectedToken.toUpperCase())
+      .toList();
+
+  // Return token-filtered list if available, otherwise all matching type ads
+  return tokenFiltered.isNotEmpty ? tokenFiltered : typeFiltered;
 }
 
   List<P2PTrade> _filterTrades(List<P2PTrade> all, {required bool isBuyTab}) {
@@ -438,6 +441,11 @@ List<P2PAd> _filterAds(List<P2PAd> all, {required bool isBuySide}) {
       return Expanded(
         child: InkWell(
           onTap: () {
+            // Orders, My Ads, Profile are coming soon — only P2P (index 0) is live
+            if (index != 0) {
+              showComingSoon(context);
+              return;
+            }
             setState(() => _p2pNavIndex = index);
             if (index == 1) {
               _silentRefreshTrades();
