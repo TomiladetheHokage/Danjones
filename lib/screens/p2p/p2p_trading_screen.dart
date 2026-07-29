@@ -526,6 +526,10 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> with WidgetsBinding
   void _showSellAmountDialog(P2PAd ad) {
     final ctrl = TextEditingController();
     String? err;
+    // Derive crypto limits from the fiat limits and ad price
+    final minCrypto = ad.minLimit / ad.price;
+    final maxCrypto = ad.maxLimit / ad.price;
+
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
@@ -556,7 +560,7 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> with WidgetsBinding
                       const TextInputType.numberWithOptions(decimal: true),
                   style: AppTheme.inter(color: Colors.white, fontSize: 16),
                   decoration: InputDecoration(
-                    hintText: 'Enter NGN amount',
+                    hintText: 'Enter ${ad.currencySymbol} amount',
                     hintStyle: AppTheme.inter(
                         color: Colors.white30, fontSize: 14),
                     filled: true,
@@ -571,7 +575,7 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> with WidgetsBinding
                             color: Colors.white.withOpacity(0.1))),
                     contentPadding: const EdgeInsets.symmetric(
                         horizontal: 16, vertical: 14),
-                    suffixText: 'NGN',
+                    suffixText: ad.currencySymbol,
                     suffixStyle: AppTheme.inter(
                         color: Colors.white54, fontSize: 14),
                     errorText: err,
@@ -580,8 +584,8 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> with WidgetsBinding
                 ),
                 const SizedBox(height: 12),
                 Text(
-                    'Limits: ₦${ad.minLimit.toStringAsFixed(2)} – '
-                    '₦${ad.maxLimit.toStringAsFixed(2)}',
+                    'Limits: ${minCrypto.toStringAsFixed(6)} – '
+                    '${maxCrypto.toStringAsFixed(6)} ${ad.currencySymbol}',
                     style: AppTheme.inter(
                         color: const Color(0xFFE4B53E), fontSize: 12)),
                 const SizedBox(height: 24),
@@ -610,23 +614,25 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> with WidgetsBinding
                               borderRadius:
                                   BorderRadius.circular(12))),
                       onPressed: () {
-                        final amt = double.tryParse(ctrl.text);
-                        if (amt == null) {
+                        final cryptoAmt = double.tryParse(ctrl.text);
+                        if (cryptoAmt == null || cryptoAmt <= 0) {
                           setD(() => err = 'Enter a valid amount');
                           return;
                         }
-                        if (amt < ad.minLimit) {
+                        if (cryptoAmt < minCrypto) {
                           setD(() => err =
-                              'Min ₦${ad.minLimit.toStringAsFixed(0)}');
+                              'Min ${minCrypto.toStringAsFixed(6)} ${ad.currencySymbol}');
                           return;
                         }
-                        if (amt > ad.maxLimit) {
+                        if (cryptoAmt > maxCrypto) {
                           setD(() => err =
-                              'Max ₦${ad.maxLimit.toStringAsFixed(0)}');
+                              'Max ${maxCrypto.toStringAsFixed(6)} ${ad.currencySymbol}');
                           return;
                         }
+                        // Convert crypto → fiat to pass as fiatAmount
+                        final fiatAmt = cryptoAmt * ad.price;
                         Navigator.pop(ctx);
-                        _proceedToOrderConfirmation(ad, amt, isSell: true);
+                        _proceedToOrderConfirmation(ad, fiatAmt, isSell: true);
                       },
                       child: Text('Continue',
                           style: AppTheme.inter(
@@ -1064,21 +1070,21 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> with WidgetsBinding
               ),
               GestureDetector(
                 onTap: () => isBuy
-                    ? _showSellAmountDialog(ad)
-                    : _showBuyAmountDialog(ad),
+                    ? _showBuyAmountDialog(ad)
+                    : _showSellAmountDialog(ad),
                 child: Container(
                   padding: const EdgeInsets.symmetric(
                       horizontal: 24, vertical: 8),
                   decoration: BoxDecoration(
                     color: isBuy
-                        ? Colors.redAccent
-                        : const Color(0xFF33D17A),
+                        ? const Color(0xFF33D17A)
+                        : Colors.redAccent,
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
                     isBuy
-                        ? 'Sell ${ad.currencySymbol}'
-                        : 'Buy ${ad.currencySymbol}',
+                        ? 'Buy ${ad.currencySymbol}'
+                        : 'Sell ${ad.currencySymbol}',
                     style: AppTheme.inter(
                         color: Colors.white,
                         fontSize: 13,

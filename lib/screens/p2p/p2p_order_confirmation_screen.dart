@@ -56,7 +56,9 @@ class _P2POrderConfirmationScreenState extends State<P2POrderConfirmationScreen>
   @override
   void initState() {
     super.initState();
-    _cryptoAmount = widget.fiatAmount > 0 ? widget.fiatAmount / widget.ad.price : 0.0;
+    _cryptoAmount = widget.fiatAmount > 0 && widget.ad.price > 0
+        ? widget.fiatAmount / widget.ad.price
+        : 0.0;
     _startQuoteTimer();
     if (widget.isSell) {
       _fetchBankAccounts();
