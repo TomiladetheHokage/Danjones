@@ -222,9 +222,9 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> with WidgetsBinding
   List<P2PAd> _filterAds(List<P2PAd> all, {required bool isBuySide}) {
     final activeAds = all.where((ad) => ad.isActive).toList();
 
-    // Buy tab  → show merchants with SELL ads (user buys from them)
-    // Sell tab → show merchants with BUY ads (user sells to them)
-    final targetType = isBuySide ? 'sell' : 'buy';
+    // Buy tab  → show ads with type "buy"
+    // Sell tab → show ads with type "sell"
+    final targetType = isBuySide ? 'buy' : 'sell';
     final typeFiltered = activeAds
         .where((ad) => ad.type.toLowerCase() == targetType)
         .toList();
@@ -1064,21 +1064,21 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> with WidgetsBinding
               ),
               GestureDetector(
                 onTap: () => isBuy
-                    ? _showBuyAmountDialog(ad)
-                    : _showSellAmountDialog(ad),
+                    ? _showSellAmountDialog(ad)
+                    : _showBuyAmountDialog(ad),
                 child: Container(
                   padding: const EdgeInsets.symmetric(
                       horizontal: 24, vertical: 8),
                   decoration: BoxDecoration(
                     color: isBuy
-                        ? const Color(0xFF33D17A)
-                        : Colors.redAccent,
+                        ? Colors.redAccent
+                        : const Color(0xFF33D17A),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
                     isBuy
-                        ? 'Buy ${ad.currencySymbol}'
-                        : 'Sell ${ad.currencySymbol}',
+                        ? 'Sell ${ad.currencySymbol}'
+                        : 'Buy ${ad.currencySymbol}',
                     style: AppTheme.inter(
                         color: Colors.white,
                         fontSize: 13,
