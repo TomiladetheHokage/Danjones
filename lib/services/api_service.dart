@@ -65,6 +65,17 @@ class ApiService {
   
   static String? authToken;
 
+  static Map<String, dynamic>? _tryDecodeMap(String body) {
+    try {
+      final decoded = jsonDecode(body);
+      if (decoded is Map<String, dynamic>) return decoded;
+      if (decoded is Map) return Map<String, dynamic>.from(decoded);
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
   static Future<void> initToken() async {
     authToken = await _storage.read(key: 'auth_token');
   }
@@ -78,9 +89,10 @@ class ApiService {
   static Future<http.Response> _makeRequest(
     Future<http.Response> Function() requestFn, {
     String? requestName,
+    Duration timeout = const Duration(seconds: 15),
   }) async {
     try {
-      final response = await requestFn().timeout(const Duration(seconds: 15));
+      final response = await requestFn().timeout(timeout);
       return response;
     } on SocketException catch (e) {
       debugPrint('API SOCKET ERROR [$requestName]: $e');
@@ -205,10 +217,17 @@ class ApiService {
         },
       ),
       requestName: 'GET_PROFILE',
+      timeout: const Duration(seconds: 30),
     );
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
-      final Map<String, dynamic> data = jsonDecode(response.body);
+      final data = _tryDecodeMap(response.body);
+      if (data == null) {
+        throw Exception('Invalid profile response from server.');
+      }
+      if (data['user'] is Map<String, dynamic>) {
+        return UserProfile.fromJson(data['user'] as Map<String, dynamic>);
+      }
       return UserProfile.fromJson(data);
     } else {
       throw Exception('Failed to load user profile (${response.statusCode})');
@@ -236,13 +255,17 @@ class ApiService {
         return http.Response.fromStream(streamed);
       },
       requestName: 'UPDATE_PROFILE_AVATAR',
+      timeout: const Duration(seconds: 45),
     );
 
-    final data = jsonDecode(response.body);
+    final data = _tryDecodeMap(response.body);
     if (response.statusCode >= 200 && response.statusCode < 300) {
-      return data;
+      return data ?? <String, dynamic>{};
     } else {
-      final errMsg = data['message'] ?? data['error'] ?? 'Server error (${response.statusCode})';
+      if (response.statusCode == 413) {
+        throw Exception('Selected image is too large. Please choose a smaller photo.');
+      }
+      final errMsg = data?['message'] ?? data?['error'] ?? 'Server error (${response.statusCode})';
       throw Exception(errMsg);
     }
   }

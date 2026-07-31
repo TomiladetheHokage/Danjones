@@ -99,7 +99,7 @@ class _VerificationCenterScreenState extends State<VerificationCenterScreen> {
                 // Title
                 Text(
                   isApproved
-                      ? 'Tier 1 Verified'
+                    ? 'Tier 2 Verified'
                       : isPending
                           ? 'Verification Pending'
                           : isRejected
@@ -120,7 +120,7 @@ class _VerificationCenterScreenState extends State<VerificationCenterScreen> {
                 const SizedBox(height: 8),
                 Text(
                   isApproved
-                      ? 'Identity verified automatically via your\nsecure sign-up credentials.'
+                    ? 'Your identity verification is complete.\nYou now have Tier 2 access.'
                       : isPending
                           ? 'Your documents are under review.\nWe\'ll notify you once complete.'
                           : isRejected
@@ -162,11 +162,8 @@ class _VerificationCenterScreenState extends State<VerificationCenterScreen> {
                 // Action button — only show upgrade when verified; show verify when not
                 if (isApproved)
                   _buildOutlinedButton(
-                    label: 'Upgrade to Tier 2  →',
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const KycTier2Screen()),
-                    ),
+                    label: 'Upgrade to Tier 3  →',
+                    onTap: _showComingSoon,
                   )
                 else if (!isPending)
                   _buildPrimaryButton(
@@ -183,6 +180,70 @@ class _VerificationCenterScreenState extends State<VerificationCenterScreen> {
           );
         },
       ),
+    );
+  }
+
+  void _showComingSoon() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withOpacity(0.6),
+      builder: (_) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1C1D21),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.white.withOpacity(0.05)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE4B53E).withOpacity(0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.rocket_launch,
+                    color: Color(0xFFE4B53E),
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: const [
+                      Text(
+                        'Coming Soon',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        'Tier 3 verification will be available soon.',
+                        style: TextStyle(color: Colors.white54, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: const Icon(Icons.close, color: Colors.white54),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 

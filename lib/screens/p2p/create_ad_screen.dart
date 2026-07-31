@@ -136,6 +136,16 @@ class _CreateAdScreenState extends State<CreateAdScreen> {
     return '${_formatNumberWithCommas(balance.toStringAsFixed(2))} $symbol';
   }
 
+  String get _selectedAssetSymbol => _selectedAsset?.symbol.toUpperCase() ?? 'BTC';
+
+  double get _parsedPriceNgn =>
+      double.tryParse(_removeCommas(_priceController.text)) ?? 0.0;
+
+  double get _parsedTotalAssetAmount =>
+      double.tryParse(_removeCommas(_totalAmountController.text)) ?? 0.0;
+
+  double get _estimatedTotalNgn => _parsedPriceNgn * _parsedTotalAssetAmount;
+
   void _showErrorDialog(String message) {
     showDialog(
       context: context,
@@ -522,8 +532,14 @@ class _CreateAdScreenState extends State<CreateAdScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('₦ 0.00', style: AppTheme.inter(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-                Text('0.00 BTC', style: AppTheme.inter(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                Text(
+                  '₦ ${_formatNumberWithCommas(_estimatedTotalNgn.toStringAsFixed(2))}',
+                  style: AppTheme.inter(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  '0.00 $_selectedAssetSymbol',
+                  style: AppTheme.inter(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                ),
               ],
             ),
             

@@ -47,7 +47,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
     final picked = await ImagePicker().pickImage(
       source: ImageSource.gallery,
-      imageQuality: 88,
+      imageQuality: 60,
+      maxWidth: 720,
+      maxHeight: 720,
     );
     if (picked == null) return;
 
@@ -60,14 +62,28 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         _avatarImage = MemoryImage(bytes);
       });
 
-      await ApiService.updateProfileAvatar(
+      final response = await ApiService.updateProfileAvatar(
         avatarBytes: bytes,
         fileName: picked.name,
       );
 
-      final dashboard = await ApiService.getDashboardData();
-      await DataStore.instance.updateDashboard(dashboard);
-      await _loadProfile();
+      final updatedUserRaw = response['user'];
+      if (updatedUserRaw is Map<String, dynamic>) {
+        await DataStore.instance.patchDashboardUser(updatedUserRaw);
+
+        final updatedAvatar = updatedUserRaw['avatar']?.toString();
+        final resolved = ApiService.resolveUrl(updatedAvatar);
+        if (resolved != null && mounted) {
+          setState(() {
+            _avatarImage = NetworkImage(resolved);
+          });
+        }
+      }
+
+      // Refresh profile in the background; do not fail success flow if this fails.
+      try {
+        await _loadProfile();
+      } catch (_) {}
 
       if (!mounted) return;
       await _showStatusPopup(

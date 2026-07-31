@@ -31,6 +31,7 @@ class _WithdrawFormScreenState extends State<WithdrawFormScreen> {
 
   // Fee state
   double? _feeUsd;        // null = not yet fetched, -1 = failed
+  double? _feeAmount;     // fee in selected coin amount, null = unknown
   bool _isFetchingFee = false;
   Timer? _feeDebounce;
 
@@ -38,21 +39,26 @@ class _WithdrawFormScreenState extends State<WithdrawFormScreen> {
   double get _amount =>
       double.tryParse(_amountController.text.replaceAll(',', '')) ?? 0.0;
 
-  double get _youReceive => _amount > 0
-      ? (_amount - (_feeUsd != null && _feeUsd! >= 0 ? 0 : 0))
-          .clamp(0, double.infinity)
-      : 0.0;
+  double get _youReceive {
+    if (_amount <= 0) return 0.0;
+    final fee = (_feeAmount != null && _feeAmount! >= 0) ? _feeAmount! : 0.0;
+    return (_amount - fee).clamp(0, double.infinity);
+  }
 
   bool get _canSubmit =>
       _addressController.text.trim().isNotEmpty &&
       _amount > 0 &&
       _amount <= _balance &&
+      _youReceive > 0 &&
       !_isSubmitting;
 
   String? get _amountError {
     if (_amountController.text.isEmpty) return null;
     if (_amount <= 0) return 'Enter a valid amount';
     if (_amount > _balance) return 'Insufficient balance';
+    if ((_feeAmount != null && _feeAmount! >= 0) && _youReceive <= 0) {
+      return 'Amount must be greater than withdrawal fee';
+    }
     return null;
   }
 
@@ -89,7 +95,10 @@ class _WithdrawFormScreenState extends State<WithdrawFormScreen> {
     _feeDebounce?.cancel();
     final amt = double.tryParse(_amountController.text.replaceAll(',', ''));
     if (amt == null || amt <= 0) {
-      setState(() => _feeUsd = null);
+      setState(() {
+        _feeUsd = null;
+        _feeAmount = null;
+      });
       return;
     }
     // Debounce 600ms so we don't hammer the API on every keystroke
@@ -106,10 +115,27 @@ class _WithdrawFormScreenState extends State<WithdrawFormScreen> {
       );
       if (!mounted) return;
       final feeUsd = (data['fee_usd'] as num?)?.toDouble();
-      setState(() => _feeUsd = feeUsd ?? -1);
+      final fee = (data['fee'] as num?)?.toDouble();
+      final rateUsd = (data['rate_usd'] as num?)?.toDouble();
+
+      double? feeAmount = fee;
+      if ((feeAmount == null || feeAmount < 0) &&
+          feeUsd != null &&
+          rateUsd != null &&
+          rateUsd > 0) {
+        feeAmount = feeUsd / rateUsd;
+      }
+
+      setState(() {
+        _feeUsd = feeUsd ?? -1;
+        _feeAmount = feeAmount ?? -1;
+      });
     } catch (_) {
       if (!mounted) return;
-      setState(() => _feeUsd = -1); // -1 signals fetch failed
+      setState(() {
+        _feeUsd = -1;
+        _feeAmount = -1;
+      }); // -1 signals fetch failed
     } finally {
       if (mounted) setState(() => _isFetchingFee = false);
     }
@@ -546,11 +572,15 @@ class _WithdrawFormScreenState extends State<WithdrawFormScreen> {
         ),
       );
     } else {
-      feeDisplay = '\$${_feeUsd!.toStringAsFixed(2)}';
+      final amountPart = (_feeAmount != null && _feeAmount! >= 0)
+          ? '${_feeAmount!.toStringAsFixed(widget.wallet.currency.decimalPlaces)} $symbol'
+          : null;
+      final usdPart = '\$${_feeUsd!.toStringAsFixed(2)}';
+      feeDisplay = amountPart != null ? '$amountPart ($usdPart)' : usdPart;
     }
 
     final youReceiveDisplay = _amount > 0
-        ? '${_amount.toStringAsFixed(widget.wallet.currency.decimalPlaces)} $symbol'
+        ? '${_youReceive.toStringAsFixed(widget.wallet.currency.decimalPlaces)} $symbol'
         : '—';
 
     return Container(
