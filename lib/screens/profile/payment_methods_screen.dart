@@ -309,197 +309,110 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
     final accountNumber = account['account_number']?.toString() ?? '';
     final accountId = (account['id'] as num?)?.toInt() ?? 0;
     final isDeleting = _deletingAccounts[accountId] ?? false;
-    
-    final initials = bankName.isNotEmpty
-        ? bankName.substring(0, bankName.length >= 2 ? 2 : 1).toUpperCase()
-        : 'BK';
 
-    // Determine bank icon color based on initials
-    final colors = [
-      const Color(0xFF6366F1),
-      const Color(0xFF8B5CF6),
-      const Color(0xFFEC4899),
-      const Color(0xFFF59E0B),
-      const Color(0xFF10B981),
+    const accentColors = [
+      Color(0xFF33D17A),
+      Color(0xFF8B5CF6),
+      Color(0xFFE4B53E),
+      Color(0xFF60A5FA),
+      Color(0xFFFF6B6B),
     ];
-    final bgColor = colors[bankName.hashCode % colors.length];
+    final accent =
+        accentColors[bankName.hashCode.abs() % accentColors.length];
+
+    final masked = accountNumber.length > 4
+        ? '•••• ${accountNumber.substring(accountNumber.length - 4)}'
+        : accountNumber;
 
     return AnimatedOpacity(
       opacity: isDeleting ? 0.5 : 1.0,
       duration: const Duration(milliseconds: 200),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 14),
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(18),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              const Color(0xFF16171A),
-              const Color(0xFF1C1D21),
-            ],
-          ),
-          border: Border.all(
-            color: bgColor.withOpacity(0.2),
-            width: 1.2,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: bgColor.withOpacity(0.08),
-              blurRadius: 24,
-              offset: const Offset(0, 8),
+          color: const Color(0xFF151515),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.07)),
+        ),
+        child: Row(
+          children: [
+            // Coloured left bar
+            Container(
+              width: 3,
+              height: 44,
+              decoration: BoxDecoration(
+                color: accent,
+                borderRadius: BorderRadius.circular(3),
+              ),
+            ),
+            const SizedBox(width: 14),
+            // Bank info
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    bankName,
+                    style: AppTheme.inter(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    accountName,
+                    style: AppTheme.inter(
+                        fontSize: 12, color: Colors.white60),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            // Account number badge
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: accent.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: accent.withValues(alpha: 0.25)),
+              ),
+              child: Text(
+                masked,
+                style: AppTheme.inter(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: accent),
+              ),
+            ),
+            const SizedBox(width: 10),
+            // Delete button
+            GestureDetector(
+              onTap: isDeleting ? null : () => _deleteAccount(account),
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.08)),
+                ),
+                child: isDeleting
+                    ? SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.redAccent.withValues(alpha: 0.6)),
+                        ),
+                      )
+                    : const Icon(Icons.delete_outline_rounded,
+                        color: Colors.white38, size: 16),
+              ),
             ),
           ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(18),
-          child: Stack(
-            children: [
-              // Background accent
-              Positioned(
-                top: -40,
-                right: -40,
-                child: Container(
-                  width: 120,
-                  height: 120,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: bgColor.withOpacity(0.05),
-                  ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(18),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          width: 52,
-                          height: 52,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(14),
-                            gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [
-                                bgColor,
-                                bgColor.withOpacity(0.7),
-                              ],
-                            ),
-                          ),
-                          alignment: Alignment.center,
-                          child: Text(
-                            initials,
-                            style: AppTheme.inter(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                bankName,
-                                style: AppTheme.inter(
-                                  color: Colors.white,
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                accountName,
-                                style: AppTheme.inter(
-                                  color: Colors.white60,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        GestureDetector(
-                          onTap: isDeleting ? null : () => _deleteAccount(account),
-                          child: Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.05),
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(
-                                color: Colors.white.withOpacity(0.08),
-                              ),
-                            ),
-                            child: isDeleting
-                                ? SizedBox(
-                                    width: 18,
-                                    height: 18,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      valueColor:
-                                          AlwaysStoppedAnimation<Color>(
-                                        Colors.redAccent.withOpacity(0.6),
-                                      ),
-                                    ),
-                                  )
-                                : Icon(
-                                    Icons.more_vert_rounded,
-                                    color: Colors.white54,
-                                    size: 18,
-                                  ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 14),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 10,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFE4B53E).withOpacity(0.08),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: const Color(0xFFE4B53E).withOpacity(0.15),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.account_balance_wallet_rounded,
-                            color: const Color(0xFFE4B53E).withOpacity(0.7),
-                            size: 16,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              accountNumber,
-                              style: AppTheme.inter(
-                                color: const Color(0xFFE4B53E),
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                          Icon(
-                            Icons.verified_rounded,
-                            color: const Color(0xFFE4B53E),
-                            size: 16,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
         ),
       ),
     );

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/shared/user_avatar.dart';
 import 'edit_profile_screen.dart';
 import 'settings_screen.dart';
 import 'security_settings_screen.dart';
@@ -121,13 +122,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       Stack(
                         alignment: Alignment.bottomRight,
                         children: [
-                          CircleAvatar(
+                          UserAvatar(
+                            name: snapshot.data?.name ?? email,
+                            avatarUrl: snapshot.data?.avatar,
                             radius: 40,
                             backgroundColor: const Color(0xFF1C1D21),
-                            backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl) : null,
-                            child: avatarUrl == null
-                                ? const Icon(Icons.person_rounded, color: Colors.white54, size: 34)
-                                : null,
                           ),
                           Container(
                             width: 16,

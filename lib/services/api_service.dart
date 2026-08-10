@@ -12,6 +12,7 @@ import '../models/wallet/wallet.dart';
 import '../models/shared/app_notification.dart';
 import '../models/p2p/p2p_ad.dart';
 import '../models/p2p/p2p_trade.dart';
+import '../models/p2p/p2p_profile.dart';
 
 class ApiService {
   // Flutterwave Config
@@ -490,6 +491,58 @@ class ApiService {
           .toList();
     } else {
       throw Exception('Failed to load trades (${response.statusCode})');
+    }
+  }
+
+  static Future<List<P2PAd>> getMyP2pAds({String? type}) async {
+    final uri = type != null
+        ? Uri.parse('$baseUrl/p2p/my-ads?type=$type')
+        : Uri.parse('$baseUrl/p2p/my-ads');
+
+    final response = await _makeRequest(
+      () => http.get(
+        uri,
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $authToken',
+        },
+      ),
+      requestName: 'GET_MY_P2P_ADS',
+      timeout: const Duration(seconds: 30),
+    );
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      final data = _tryDecodeMap(response.body);
+      if (data == null) throw Exception('Invalid my-ads response.');
+      final adsJson = data['ads'] as List<dynamic>? ?? [];
+      return adsJson
+          .whereType<Map<String, dynamic>>()
+          .map(P2PAd.fromJson)
+          .toList();
+    } else {
+      throw Exception('Failed to load your ads (${response.statusCode})');
+    }
+  }
+
+  static Future<P2PTraderProfile> getP2pProfile() async {
+    final response = await _makeRequest(
+      () => http.get(
+        Uri.parse('$baseUrl/p2p/profile'),
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $authToken',
+        },
+      ),
+      requestName: 'GET_P2P_PROFILE',
+      timeout: const Duration(seconds: 30),
+    );
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      final data = _tryDecodeMap(response.body);
+      if (data == null) throw Exception('Invalid P2P profile response.');
+      return P2PTraderProfile.fromJson(data);
+    } else {
+      throw Exception('Failed to load P2P profile (${response.statusCode})');
     }
   }
 
