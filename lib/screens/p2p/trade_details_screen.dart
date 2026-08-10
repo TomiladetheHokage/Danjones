@@ -8,6 +8,7 @@ import '../../services/api_service.dart';
 import '../../services/data_store.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/shared/user_avatar.dart';
+import 'p2p_chat_screen.dart';
 
 class TradeDetailsScreen extends StatefulWidget {
   final P2PTrade trade;
@@ -129,6 +130,27 @@ class _TradeDetailsScreenState extends State<TradeDetailsScreen> {
   }
 
   // ── Actions ────────────────────────────────────────────
+  void _openChat() {
+    final trade = widget.trade;
+    final currentUserId = DataStore.instance.dashboard.value?.user.id;
+    final isBuyer = trade.buyerId == currentUserId;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => P2PChatScreen(
+          tradeId: trade.id,
+          fiatAmount: trade.fiatAmount,
+          cryptoAmount: trade.cryptoAmount,
+          currencySymbol: trade.currencySymbol,
+          counterpartyName: isBuyer ? trade.sellerName : trade.buyerName,
+          counterpartyAvatar: isBuyer ? trade.sellerAvatar : trade.buyerAvatar,
+          isBuyer: isBuyer,
+          createdAt: trade.createdAt,
+        ),
+      ),
+    );
+  }
+
   Future<void> _cancelTrade() async {
     final shouldCancel = await showDialog<bool>(
       context: context,
@@ -302,7 +324,7 @@ class _TradeDetailsScreenState extends State<TradeDetailsScreen> {
           IconButton(
             icon: const Icon(Icons.headset_mic_outlined,
                 color: Colors.white, size: 24),
-            onPressed: () {},
+            onPressed: _openChat,
           ),
           const SizedBox(width: 4),
         ],
@@ -333,7 +355,6 @@ class _TradeDetailsScreenState extends State<TradeDetailsScreen> {
                     counterpartyName,
                     counterpartyInitials,
                     counterpartyAvatar,
-                    trade,
                   ),
 
                   const SizedBox(height: 24),
@@ -649,7 +670,6 @@ class _TradeDetailsScreenState extends State<TradeDetailsScreen> {
     String name,
     String initials,
     String? avatarUrl,
-    P2PTrade trade,
   ) {
     return Container(
       width: double.infinity,
@@ -679,12 +699,15 @@ class _TradeDetailsScreenState extends State<TradeDetailsScreen> {
               Expanded(
                 child: Row(
                   children: [
-                    Text(
-                      name,
-                      style: AppTheme.inter(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white),
+                    Flexible(
+                      child: Text(
+                        name,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTheme.inter(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white),
+                      ),
                     ),
                     const SizedBox(width: 5),
                     const Icon(Icons.verified_rounded,
@@ -693,14 +716,17 @@ class _TradeDetailsScreenState extends State<TradeDetailsScreen> {
                 ),
               ),
               // Chat + chevron
-              Row(
-                children: [
-                  const Icon(Icons.chat_bubble_outline_rounded,
-                      color: Color(0xFFE4B53E), size: 22),
-                  const SizedBox(width: 12),
-                  const Icon(Icons.chevron_right_rounded,
-                      color: Colors.white54, size: 22),
-                ],
+              GestureDetector(
+                onTap: _openChat,
+                child: Row(
+                  children: [
+                    const Icon(Icons.chat_bubble_outline_rounded,
+                        color: Color(0xFFE4B53E), size: 22),
+                    const SizedBox(width: 12),
+                    const Icon(Icons.chevron_right_rounded,
+                        color: Colors.white54, size: 22),
+                  ],
+                ),
               ),
             ],
           ),

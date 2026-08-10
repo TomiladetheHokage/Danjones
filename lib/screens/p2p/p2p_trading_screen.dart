@@ -924,9 +924,6 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> with WidgetsBinding
   }
 
   Widget _buildAdCard(P2PAd ad) {
-    final initials = ad.userName.length >= 2
-        ? ad.userName.substring(0, 2).toUpperCase()
-        : ad.userName.toUpperCase();
     final isBuy = _isBuySelected;
 
     return Container(
@@ -1299,15 +1296,6 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> with WidgetsBinding
         : const Color(0xFFFF6B6B);
 
     final counterparty = isBuyer ? trade.sellerName : trade.buyerName;
-    final initials = counterparty.isNotEmpty
-        ? counterparty
-            .trim()
-            .split(' ')
-            .map((w) => w.isNotEmpty ? w[0] : '')
-            .take(2)
-            .join()
-            .toUpperCase()
-        : '?';
 
     final sc = _statusColor(trade.status);
     final statusLabel = _statusDisplayLabel(trade.status);
@@ -1383,12 +1371,15 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> with WidgetsBinding
                 Expanded(
                   child: Row(
                     children: [
-                      Text(
-                        counterparty,
-                        style: AppTheme.inter(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
+                      Flexible(
+                        child: Text(
+                          counterparty,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTheme.inter(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 5),
