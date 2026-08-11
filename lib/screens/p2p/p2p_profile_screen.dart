@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../../models/p2p/p2p_profile.dart';
+import '../../models/auth/user_profile.dart';
 import '../../services/api_service.dart';
 import '../../widgets/shared/user_avatar.dart';
 import '../profile/notifications_screen.dart';
@@ -15,11 +16,13 @@ class P2PProfileScreen extends StatefulWidget {
 
 class _P2PProfileScreenState extends State<P2PProfileScreen> {
   late Future<P2PTraderProfile> _profileFuture;
+  late Future<UserProfile> _userFuture;
 
   @override
   void initState() {
     super.initState();
     _profileFuture = ApiService.getP2pProfile();
+    _userFuture = ApiService.getUserProfile();
   }
 
   String _formatJoinDate(DateTime? dt) {
@@ -97,8 +100,10 @@ class _P2PProfileScreenState extends State<P2PProfileScreen> {
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10)),
                     ),
-                    onPressed: () =>
-                        setState(() => _profileFuture = ApiService.getP2pProfile()),
+                    onPressed: () => setState(() {
+                      _profileFuture = ApiService.getP2pProfile();
+                      _userFuture = ApiService.getUserProfile();
+                    }),
                     child: Text('Retry',
                         style: AppTheme.inter(color: const Color(0xFFE4B53E))),
                   ),
@@ -116,8 +121,14 @@ class _P2PProfileScreenState extends State<P2PProfileScreen> {
               children: [
                 const SizedBox(height: 24),
 
-                // ── Header ──
-                _buildHeader(profile),
+                // ── Header — also needs user avatar ──
+                FutureBuilder<UserProfile>(
+                  future: _userFuture,
+                  builder: (context, userSnap) {
+                    final avatarUrl = userSnap.data?.avatar;
+                    return _buildHeader(profile, avatarUrl);
+                  },
+                ),
 
                 const SizedBox(height: 24),
 
@@ -196,14 +207,14 @@ class _P2PProfileScreenState extends State<P2PProfileScreen> {
   // ─────────────────────────────────────────────────────────
   // Header
   // ─────────────────────────────────────────────────────────
-  Widget _buildHeader(P2PTraderProfile profile) {
+  Widget _buildHeader(P2PTraderProfile profile, String? avatarUrl) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        // Avatar — cached network image with initials fallback
+        // Avatar — real user photo with initials fallback
         UserAvatar(
           name: profile.name,
-          avatarUrl: profile.avatar,
+          avatarUrl: avatarUrl ?? profile.avatar,
           radius: 38,
         ),
 
@@ -259,45 +270,6 @@ class _P2PProfileScreenState extends State<P2PProfileScreen> {
           ),
         ),
       ],
-    );
-  }
-
-  // ─────────────────────────────────────────────────────────
-  // About Me
-  // ─────────────────────────────────────────────────────────
-  Widget _buildAboutMe(P2PTraderProfile profile) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF161616),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.07)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'About Me',
-            style: AppTheme.inter(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Hi, I\'m ${profile.name.split(' ').first}! '
-            'Trading crypto on Danjones. '
-            'Fast, reliable, and always available for smooth transactions.',
-            style: AppTheme.inter(
-              fontSize: 13,
-              color: Colors.white60,
-              height: 1.6,
-            ),
-          ),
-        ],
-      ),
     );
   }
 

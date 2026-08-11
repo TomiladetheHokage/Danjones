@@ -107,13 +107,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               FutureBuilder<UserProfile>(
                 future: userFuture,
                 builder: (context, snapshot) {
-                  String? avatarUrl;
                   String email = 'user***@email.com';
 
                   if (snapshot.hasData) {
-                    if (snapshot.data!.avatar != null && snapshot.data!.avatar!.isNotEmpty) {
-                      avatarUrl = ApiService.resolveUrl(snapshot.data!.avatar);
-                    }
                     email = snapshot.data!.email;
                   }
 
@@ -236,17 +232,14 @@ const SizedBox(height: 30),
                 _buildMenuItem(
                   imagePath: 'assets/icons/finger-print.png',
                   title: 'Identity Verification',
-                  subtitle: 'Level 1',
-                 onTap: () {
-  // _showComingSoon(context);
-
-  // TODO: enable when KYC is ready
-  Navigator.push(
-    context,
-    MaterialPageRoute(builder: (_) => const VerificationCenterScreen()),
-  );
-},
-       trailing: _buildKycBadge(),
+                  subtitle: _kycTierLabel(),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const VerificationCenterScreen()),
+                    );
+                  },
+                  trailing: _buildKycBadge(),
                 ),
               ]),
               const SizedBox(height: 16),
@@ -378,6 +371,15 @@ const SizedBox(height: 30),
     );
   }
  
+  String _kycTierLabel() {
+    if (_profile == null) return 'Not verified';
+    final status = _profile!.kycStatus.toLowerCase();
+    if (_profile!.kycVerified || status == 'approved') return 'Tier 2';
+    if (status == 'pending') return 'Tier 1 · Pending';
+    if (status == 'rejected') return 'Tier 1 · Rejected';
+    return 'Tier 1';
+  }
+
   Widget _buildKycBadge() {
     final bool verified = _profile?.kycVerified ?? false;
     final String status = _profile?.kycStatus.toLowerCase() ?? '';

@@ -11,6 +11,7 @@ class UserProfile {
   final String createdAt;
   final String kycStatus;   // "approved" | "pending" | "rejected" | ""
   final bool kycVerified;
+  final int kycLevel;       // 0, 1, 2, etc.
 
   UserProfile({
     required this.id,
@@ -25,6 +26,7 @@ class UserProfile {
     required this.createdAt,
     this.kycStatus = '',
     this.kycVerified = false,
+    this.kycLevel = 0,
   });
 
   factory UserProfile.fromJson(Map<String, dynamic> json) {
@@ -41,6 +43,7 @@ class UserProfile {
       createdAt: json['created_at'] ?? '',
       kycStatus: json['kyc_status']?.toString() ?? '',
       kycVerified: json['kyc_verified'] == true || json['kyc_verified'] == 1,
+      kycLevel: (json['kyc_level'] as num?)?.toInt() ?? 0,
     );
   }
 }

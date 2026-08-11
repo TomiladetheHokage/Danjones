@@ -13,6 +13,7 @@ import 'my_ads_screen.dart';
 import 'p2p_order_confirmation_screen.dart';
 import 'p2p_seller_release_screen.dart';
 import 'p2p_profile_screen.dart';
+import 'p2p_user_profile_screen.dart';
 import 'trade_details_screen.dart';
 
 class P2PTradingScreen extends StatefulWidget {
@@ -44,7 +45,7 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> with WidgetsBinding
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    final adsFuture = ApiService.getP2pAds();
+    final adsFuture = ApiService.getP2pAds(type: 'buy');
     adsFuture.then(_updateAvailableTokens).catchError((_) {});
     _adsFuture = adsFuture;
     _tradesFuture = ApiService.getMyP2pTrades().then((trades) {
@@ -88,7 +89,8 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> with WidgetsBinding
   }
 
   void _refreshAds() {
-    final future = ApiService.getP2pAds();
+    final type = _isBuySelected ? 'buy' : 'sell';
+    final future = ApiService.getP2pAds(type: type);
     future.then(_updateAvailableTokens).catchError((_) {});
     setState(() => _adsFuture = future);
   }
@@ -733,12 +735,12 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> with WidgetsBinding
           color: const Color(0xFF151515),
         ),
         child: Row(children: [
-          _buildSegTab('Buy', _isBuySelected,
-              () => setState(() => _isBuySelected = true)),
+          _buildSegTab('Buy', _isBuySelected, () {
+            setState(() => _isBuySelected = true);
+            _refreshAds();
+          }),
           _buildSegTab('Sell', !_isBuySelected, () {
-            setState(() {
-              _isBuySelected = false;
-            });
+            setState(() => _isBuySelected = false);
             _refreshAds();
           }),
         ]),
@@ -935,7 +937,19 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> with WidgetsBinding
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          // Tapping the user info row routes to their profile
+          GestureDetector(
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => P2PUserProfileScreen(
+                  userId: ad.userId,
+                  userName: ad.userName,
+                  userAvatar: ad.userAvatar,
+                ),
+              ),
+            ),
+            child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               UserAvatar(
@@ -992,6 +1006,8 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> with WidgetsBinding
                 ],
               ),
             ],
+          ),
+          // end GestureDetector for user profile tap
           ),
           const SizedBox(height: 12),
           Row(

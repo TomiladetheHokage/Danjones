@@ -404,19 +404,22 @@ class ApiService {
     }
   }
 
-  static Future<List<P2PAd>> getP2pAds() async {
-    final now = DateTime.now().millisecondsSinceEpoch.toString();
+  static Future<List<P2PAd>> getP2pAds({String? type}) async {
     final primaryBase = (kIsWeb && kDebugMode) ? liveUrl : baseUrl;
     final fallbackBase = (kIsWeb && kDebugMode) ? localUrl : liveUrl;
 
+    Uri buildUri(String base) {
+      final params = <String, String>{};
+      if (type != null) params['type'] = type;
+      return Uri.parse('$base/p2p/ads').replace(queryParameters: params.isEmpty ? null : params);
+    }
+
     Future<http.Response> fetch(String base) {
       return http.get(
-        Uri.parse('$base/p2p/ads?t=$now'),
+        buildUri(base),
         headers: {
           'Accept': 'application/json',
           'Authorization': 'Bearer $authToken',
-          'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache',
         },
       );
     }
@@ -525,9 +528,17 @@ class ApiService {
   }
 
   static Future<P2PTraderProfile> getP2pProfile() async {
+    return _fetchP2pProfile('$baseUrl/p2p/profile');
+  }
+
+  static Future<P2PTraderProfile> getP2pUserProfile(int userId) async {
+    return _fetchP2pProfile('$baseUrl/p2p/profile/$userId');
+  }
+
+  static Future<P2PTraderProfile> _fetchP2pProfile(String url) async {
     final response = await _makeRequest(
       () => http.get(
-        Uri.parse('$baseUrl/p2p/profile'),
+        Uri.parse(url),
         headers: {
           'Accept': 'application/json',
           'Authorization': 'Bearer $authToken',
