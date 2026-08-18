@@ -45,7 +45,9 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> with WidgetsBinding
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    final adsFuture = ApiService.getP2pAds(type: 'buy');
+    // Buy tab → user wants to buy → show sell ads (sellers offering crypto)
+    // Sell tab → user wants to sell → show buy ads (buyers wanting crypto)
+    final adsFuture = ApiService.getP2pAds(type: 'sell');
     adsFuture.then(_updateAvailableTokens).catchError((_) {});
     _adsFuture = adsFuture;
     _tradesFuture = ApiService.getMyP2pTrades().then((trades) {
@@ -89,7 +91,9 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> with WidgetsBinding
   }
 
   void _refreshAds() {
-    final type = _isBuySelected ? 'buy' : 'sell';
+    // Buy tab → user wants to buy → show sell ads
+    // Sell tab → user wants to sell → show buy ads
+    final type = _isBuySelected ? 'sell' : 'buy';
     final future = ApiService.getP2pAds(type: type);
     future.then(_updateAvailableTokens).catchError((_) {});
     setState(() => _adsFuture = future);
@@ -113,39 +117,17 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> with WidgetsBinding
   }
 
   Future<void> _proceedToOrderConfirmation(P2PAd cachedAd, double fiatAmount, {bool isSell = false}) async {
-    try {
-      // Fetch fresh ad data to ensure latest seller bank details are shown
-      final freshAds = await ApiService.getP2pAds();
-      final freshAd = freshAds.firstWhere(
-        (ad) => ad.id == cachedAd.id,
-        orElse: () => cachedAd, // Fall back to cached if not found
-      );
-
-      if (!mounted) return;
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => P2POrderConfirmationScreen(
-            ad: freshAd,
-            fiatAmount: fiatAmount,
-            isSell: isSell,
-          ),
+    if (!mounted) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => P2POrderConfirmationScreen(
+          ad: cachedAd,
+          fiatAmount: fiatAmount,
+          isSell: isSell,
         ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      // If fresh fetch fails, use cached ad
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => P2POrderConfirmationScreen(
-            ad: cachedAd,
-            fiatAmount: fiatAmount,
-            isSell: isSell,
-          ),
-        ),
-      );
-    }
+      ),
+    );
   }
 
   Future<void> _callMyTradesEndpoint() async {
@@ -227,18 +209,13 @@ class _P2PTradingScreenState extends State<P2PTradingScreen> with WidgetsBinding
   }
 
   List<P2PAd> _filterAds(List<P2PAd> all, {required bool isBuySide}) {
-    final activeAds = all.where((ad) => ad.isActive).toList();
-
-    // Buy tab  → show ads with type "buy"
-    // Sell tab → show ads with type "sell"
-    final targetType = isBuySide ? 'buy' : 'sell';
-    final typeFiltered = activeAds
-        .where((ad) => ad.type.toLowerCase() == targetType)
-        .toList();
-
-    // Apply token filter — skip if nothing selected yet
-    if (_selectedToken.isEmpty) return typeFiltered;
-    return typeFiltered
+    final currentUserId = DataStore.instance.dashboard.value?.user.id;
+    // Active ads only, and never show the logged-in user's own ads
+    final activeAds = all.where((ad) =>
+        ad.isActive && (currentUserId == null || ad.userId != currentUserId)
+    ).toList();
+    if (_selectedToken.isEmpty) return activeAds;
+    return activeAds
         .where((ad) => ad.currencySymbol.toUpperCase() == _selectedToken)
         .toList();
   }

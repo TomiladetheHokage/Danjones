@@ -80,6 +80,7 @@ class P2PChatScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF0A0A0A),
+      resizeToAvoidBottomInset: true,
       appBar: AppBar(
         backgroundColor: const Color(0xFF0A0A0A),
         elevation: 0,
@@ -187,10 +188,9 @@ class P2PChatScreen extends StatelessWidget {
                       border: Border.all(color: Colors.white.withOpacity(0.05)),
                     ),
                     child: TextField(
-                      readOnly: true,
                       style: AppTheme.inter(color: Colors.white),
                       decoration: InputDecoration(
-                        hintText: 'Messaging endpoint not available yet',
+                        hintText: 'Type a message...',
                         hintStyle: AppTheme.inter(color: Colors.white38),
                         border: InputBorder.none,
                       ),

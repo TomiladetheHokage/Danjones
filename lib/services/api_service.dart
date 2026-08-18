@@ -291,6 +291,30 @@ class ApiService {
     }
   }
 
+  /// Returns usd_ngn_rate and per-currency rate_usd values from /wallets/rates.
+  /// Response shape: { "usd_ngn_rate": 1500, "wallets": [ { "symbol": "BTC", "rate_usd": 63625.77, ... } ] }
+  static Future<Map<String, dynamic>> getWalletRates() async {
+    final response = await _makeRequest(
+      () => http.get(
+        Uri.parse('$baseUrl/wallets/rates'),
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $authToken',
+        },
+      ),
+      requestName: 'GET_WALLET_RATES',
+      timeout: const Duration(seconds: 20),
+    );
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      final data = _tryDecodeMap(response.body);
+      if (data == null) throw Exception('Invalid rates response.');
+      return data;
+    } else {
+      throw Exception('Failed to load wallet rates (${response.statusCode})');
+    }
+  }
+
   static Future<List<AppNotification>> getNotifications() async {
     final response = await _makeRequest(
       () => http.get(

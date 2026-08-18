@@ -280,17 +280,17 @@ const SizedBox(height: 30),
                     );
                   },
                 ),
-                _buildMenuItem(
-                  icon: Icons.campaign_outlined,
-                  title: 'My Ads',
-                  subtitle: 'Manage your P2P buy/sell ads',
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const MyAdsScreen()),
-                    );
-                  },
-                ),
+                // _buildMenuItem(
+                //   icon: Icons.campaign_outlined,
+                //   title: 'My Ads',
+                //   subtitle: 'Manage your P2P buy/sell ads',
+                //   onTap: () {
+                //     Navigator.push(
+                //       context,
+                //       MaterialPageRoute(builder: (context) => const MyAdsScreen()),
+                //     );
+                //   },
+                // ),
               ]),
               const SizedBox(height: 16),
               _buildMenuGroup([

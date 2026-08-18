@@ -48,6 +48,9 @@ class _P2POrderConfirmationScreenState extends State<P2POrderConfirmationScreen>
   List<Map<String, dynamic>> _bankAccounts = [];
   int _selectedBankIndex = 0;
 
+  // Market rate fetched from /wallets/rates — NGN per 1 unit of the traded crypto
+  double? _marketNgnPerCrypto;
+
   // Quote countdown
   static const int _quoteDuration = 59;
   int _quoteSeconds = _quoteDuration;
@@ -56,12 +59,51 @@ class _P2POrderConfirmationScreenState extends State<P2POrderConfirmationScreen>
   @override
   void initState() {
     super.initState();
+    // Initial estimate using ad.price as NGN-per-crypto
     _cryptoAmount = widget.fiatAmount > 0 && widget.ad.price > 0
         ? widget.fiatAmount / widget.ad.price
         : 0.0;
     _startQuoteTimer();
+    _fetchRatesAndRecalculate();
     if (widget.isSell) {
       _fetchBankAccounts();
+    }
+  }
+
+  /// Fetches /wallets/rates, finds the matching currency by symbol,
+  /// then recomputes _cryptoAmount as:
+  ///   fiatNGN / (rate_usd * usd_ngn_rate)
+  Future<void> _fetchRatesAndRecalculate() async {
+    try {
+      final data = await ApiService.getWalletRates();
+      if (!mounted) return;
+
+      final double usdNgnRate =
+          (data['usd_ngn_rate'] as num?)?.toDouble() ?? 1500.0;
+      final List<dynamic> wallets = data['wallets'] as List<dynamic>? ?? [];
+
+      final match = wallets.cast<Map<String, dynamic>>().firstWhere(
+        (w) => (w['symbol'] as String?)?.toLowerCase() ==
+            widget.ad.currencySymbol.toLowerCase(),
+        orElse: () => <String, dynamic>{},
+      );
+
+      final double? rateUsd = (match['rate_usd'] as num?)?.toDouble();
+      if (rateUsd == null || rateUsd <= 0) return;
+
+      final double ngnPerCrypto = rateUsd * usdNgnRate;
+      if (ngnPerCrypto <= 0) return;
+
+      final double newCryptoAmount = widget.fiatAmount > 0
+          ? widget.fiatAmount / ngnPerCrypto
+          : 0.0;
+
+      setState(() {
+        _marketNgnPerCrypto = ngnPerCrypto;
+        _cryptoAmount = newCryptoAmount;
+      });
+    } catch (_) {
+      // Silently fall back to ad.price-based calculation already set in initState
     }
   }
 
@@ -97,6 +139,13 @@ class _P2POrderConfirmationScreenState extends State<P2POrderConfirmationScreen>
   String _maskAccountNumber(String number) {
     if (number.length <= 4) return number;
     return '•••• ${number.substring(number.length - 4)}';
+  }
+
+  String _fmtNumber(double v) {
+    final s = v == v.roundToDouble()
+        ? v.toStringAsFixed(0)
+        : v.toStringAsFixed(2);
+    return s.replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (m) => ',');
   }
 
   void _startQuoteTimer() {
@@ -417,7 +466,13 @@ class _P2POrderConfirmationScreenState extends State<P2POrderConfirmationScreen>
         ),
         const SizedBox(height: 24),
 
-        P2PInfoRow(label: 'Price per unit', value: '${widget.ad.price.toStringAsFixed(2)} NGN'),
+        P2PInfoRow(label: 'Price per unit', value: '₦${_fmtNumber(widget.ad.price)} NGN'),
+        P2PInfoRow(
+          label: 'Market rate',
+          value: _marketNgnPerCrypto != null
+              ? '₦${_fmtNumber(_marketNgnPerCrypto!)} NGN'
+              : '—',
+        ),
         P2PInfoRow(label: 'Quantity', value: '${_cryptoAmount.toStringAsFixed(8)} ${widget.ad.currencySymbol}'),
         P2PInfoRow(label: 'Terms', value: widget.ad.terms.isNotEmpty ? widget.ad.terms : 'No specific terms'),
         const SizedBox(height: 24),
